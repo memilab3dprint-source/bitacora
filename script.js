@@ -450,23 +450,22 @@ async function initVentas(user, area) {
   const descripcionInput = document.getElementById("venta-descripcion");
   const precioInput = document.getElementById("venta-precio");
   const listaInventario = document.getElementById("lista-inventario");
-  const preciosPorProducto = new Map();
+  const productosPorNombre = new Map();
 
   const { data: productosInventario } = await sb
     .from("productos")
-    .select("nombre, precio")
+    .select("id, nombre, precio")
     .eq("area", area)
     .order("nombre", { ascending: true });
 
-  (productosInventario || []).forEach((p) => preciosPorProducto.set(p.nombre, p.precio));
+  (productosInventario || []).forEach((p) => productosPorNombre.set(p.nombre, p));
   listaInventario.innerHTML = (productosInventario || [])
     .map((p) => `<option value="${p.nombre}"></option>`)
     .join("");
 
   descripcionInput.addEventListener("input", () => {
-    if (preciosPorProducto.has(descripcionInput.value)) {
-      precioInput.value = preciosPorProducto.get(descripcionInput.value);
-    }
+    const producto = productosPorNombre.get(descripcionInput.value);
+    if (producto) precioInput.value = producto.precio;
   });
 
   function wireDelete(container) {
@@ -488,8 +487,8 @@ async function initVentas(user, area) {
       .order("creado_en", { ascending: true });
 
     ventasHoyBody.innerHTML = hoy?.length
-      ? hoy.map((v) => ventaRowHTML(v, area)).join("")
-      : `<tr><td class="table-empty" colspan="8">Todavía no hay ventas registradas hoy.</td></tr>`;
+      ? hoy.map((v) => ventaRowHTML(v, area, { conFecha: true })).join("")
+      : `<tr><td class="table-empty" colspan="9">Todavía no hay ventas registradas hoy.</td></tr>`;
     wireDelete(ventasHoyBody);
 
     const { data: delMes } = await sb
@@ -527,6 +526,17 @@ async function initVentas(user, area) {
       alert("No se pudo registrar la venta: " + error.message);
       return;
     }
+
+    const producto = productosPorNombre.get(descripcion);
+    if (producto) {
+      const { data: actual } = await sb.from("productos").select("cantidad").eq("id", producto.id).maybeSingle();
+      if (actual) {
+        const nuevaCantidad = actual.cantidad - cantidad;
+        await sb.from("productos").update({ cantidad: nuevaCantidad }).eq("id", producto.id);
+        producto.cantidad = nuevaCantidad;
+      }
+    }
+
     form.reset();
     document.getElementById("venta-cantidad").value = 1;
     await render();
