@@ -231,6 +231,33 @@ main {
   margin-top: 36px;
 }
 
+.solo-meli {
+  display: none;
+}
+
+.field.solo-meli {
+  display: none;
+}
+
+body[data-current-area="ecommerce_meli"] td.solo-meli,
+body[data-current-area="ecommerce_meli"] th.solo-meli {
+  display: table-cell;
+}
+
+body[data-current-area="ecommerce_meli"] .field.solo-meli {
+  display: flex;
+}
+
+body[data-current-area="ecommerce_meli"] p.solo-meli {
+  display: block;
+}
+
+.field-note {
+  margin: 4px 0 0;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
 .panel {
   background: var(--surface);
   border: 1px solid var(--border);
