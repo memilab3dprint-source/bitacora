@@ -42,7 +42,9 @@
         <div class="form-grid">
           <div class="field full">
             <label for="venta-descripcion">Producto / concepto vendido</label>
-            <input id="venta-descripcion" type="text" required placeholder="Ej. Llavero personalizado" />
+            <input id="venta-descripcion" type="text" required placeholder="Ej. Llavero personalizado" list="lista-inventario" autocomplete="off" />
+            <datalist id="lista-inventario"></datalist>
+            <p class="field-note">Elige un producto del inventario para completar el precio automáticamente, o escribe uno nuevo.</p>
           </div>
           <div class="field">
             <label for="venta-cantidad">Cantidad</label>

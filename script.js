@@ -447,6 +447,28 @@ async function initVentas(user, area) {
   const notaComision = document.getElementById("nota-comision");
   if (notaComision) notaComision.textContent = `Se descuenta automáticamente la comisión de MercadoLibre (${(COMISION_MELI * 100).toFixed(0)}% del precio de venta).`;
 
+  const descripcionInput = document.getElementById("venta-descripcion");
+  const precioInput = document.getElementById("venta-precio");
+  const listaInventario = document.getElementById("lista-inventario");
+  const preciosPorProducto = new Map();
+
+  const { data: productosInventario } = await sb
+    .from("productos")
+    .select("nombre, precio")
+    .eq("area", area)
+    .order("nombre", { ascending: true });
+
+  (productosInventario || []).forEach((p) => preciosPorProducto.set(p.nombre, p.precio));
+  listaInventario.innerHTML = (productosInventario || [])
+    .map((p) => `<option value="${p.nombre}"></option>`)
+    .join("");
+
+  descripcionInput.addEventListener("input", () => {
+    if (preciosPorProducto.has(descripcionInput.value)) {
+      precioInput.value = preciosPorProducto.get(descripcionInput.value);
+    }
+  });
+
   function wireDelete(container) {
     container.querySelectorAll("[data-id]").forEach((btn) => {
       btn.addEventListener("click", async () => {
