@@ -67,6 +67,11 @@
             <label for="venta-envio">Envío (CLP)</label>
             <input id="venta-envio" type="number" min="0" step="1" placeholder="0" />
           </div>
+          <div class="field">
+            <label for="venta-devolucion">Devolución (CLP)</label>
+            <input id="venta-devolucion" type="number" min="0" step="1" value="0" placeholder="0" />
+            <p class="field-note">Solo si ya sabes que se va a devolver total o parcialmente. Si no, déjalo en 0 -- puedes registrarla después desde la tabla.</p>
+          </div>
         </div>
         <p class="field-note solo-meli" id="nota-comision"></p>
         <div class="form-actions">
@@ -81,7 +86,7 @@
       <div class="table-wrap">
         <table>
           <thead>
-            <tr><th>Fecha</th><th>Producto</th><th>Cantidad</th><th>Precio</th><th>Costo</th><th class="solo-meli">Envío</th><th class="solo-meli">Comisión</th><th>Margen</th><th>Beneficio</th><th></th></tr>
+            <tr><th>Fecha</th><th>Producto</th><th>Cantidad</th><th>Precio</th><th>Costo</th><th class="solo-meli">Envío</th><th class="solo-meli">Comisión</th><th>Devolución</th><th>Margen</th><th>Beneficio</th><th></th></tr>
           </thead>
           <tbody id="ventas-hoy"></tbody>
         </table>
@@ -113,7 +118,7 @@
       <div class="table-wrap">
         <table>
           <thead>
-            <tr><th>Fecha</th><th>Producto</th><th>Cantidad</th><th>Precio</th><th>Costo</th><th class="solo-meli">Envío</th><th class="solo-meli">Comisión</th><th>Margen</th><th>Beneficio</th><th></th></tr>
+            <tr><th>Fecha</th><th>Producto</th><th>Cantidad</th><th>Precio</th><th>Costo</th><th class="solo-meli">Envío</th><th class="solo-meli">Comisión</th><th>Devolución</th><th>Margen</th><th>Beneficio</th><th></th></tr>
           </thead>
           <tbody id="ventas-mes"></tbody>
         </table>

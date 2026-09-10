@@ -65,7 +65,7 @@ create table if not exists public.ventas (
   precio_venta numeric(10, 2) not null default 0,
   costo numeric(10, 2) not null default 0,
   envio numeric(10, 2) not null default 0,
-  devuelta boolean not null default false,
+  monto_devuelto numeric(10, 2) not null default 0,
   creado_por uuid references auth.users (id),
   creado_en timestamptz not null default now()
 );

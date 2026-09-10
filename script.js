@@ -35,7 +35,17 @@ function comisionMeli(precioVenta, area) {
 }
 
 function calcularBeneficio(v, area) {
-  return Number(v.precio_venta) - Number(v.costo) - Number(v.envio || 0) - comisionMeli(v.precio_venta, area);
+  return (
+    Number(v.precio_venta) -
+    Number(v.costo) -
+    Number(v.envio || 0) -
+    comisionMeli(v.precio_venta, area) -
+    Number(v.monto_devuelto || 0)
+  );
+}
+
+function facturacionNeta(v) {
+  return Number(v.precio_venta) - Number(v.monto_devuelto || 0);
 }
 
 function inicioDeMes(offsetMeses = 0) {
@@ -453,20 +463,22 @@ function margenPct(v, area) {
 
 function ventaRowHTML(v, area, { conFecha = false, conAcciones = true } = {}) {
   const beneficio = calcularBeneficio(v, area);
-  return `<tr class="${v.devuelta ? "fila-devuelta" : ""}">
+  const devuelta = Number(v.monto_devuelto) > 0;
+  return `<tr class="${devuelta ? "fila-devuelta" : ""}">
     ${conFecha ? `<td>${v.fecha}</td>` : ""}
-    <td>${v.descripcion}${v.devuelta ? '<span class="badge badge-devuelta">Devuelta</span>' : ""}</td>
+    <td>${v.descripcion}${devuelta ? '<span class="badge badge-devuelta">Devuelta</span>' : ""}</td>
     <td>${v.cantidad}</td>
     <td>${formatCurrency(v.precio_venta)}</td>
     <td>${formatCurrency(v.costo)}</td>
     <td class="solo-meli">${formatCurrency(v.envio)}</td>
     <td class="solo-meli">${formatCurrency(comisionMeli(v.precio_venta, area))}</td>
+    <td>${devuelta ? formatCurrency(v.monto_devuelto) : "—"}</td>
     <td>${margenPct(v, area).toFixed(0)}%</td>
     <td>${formatCurrency(beneficio)}</td>
     ${
       conAcciones
         ? `<td><div class="row-actions">
-            <button class="btn btn-secondary btn-toggle-devuelta" data-id="${v.id}" data-devuelta="${v.devuelta ? "true" : "false"}">${v.devuelta ? "Deshacer" : "Devuelta"}</button>
+            <button class="btn btn-secondary btn-editar-devolucion" data-id="${v.id}" data-precio="${v.precio_venta}" data-monto="${v.monto_devuelto || 0}">${devuelta ? "Editar devolución" : "Registrar devolución"}</button>
             <button class="btn btn-danger" data-id="${v.id}">Eliminar</button>
           </div></td>`
         : ""
@@ -518,10 +530,16 @@ async function initVentas(user, area) {
         await onDone();
       });
     });
-    container.querySelectorAll(".btn-toggle-devuelta[data-id]").forEach((btn) => {
+    container.querySelectorAll(".btn-editar-devolucion[data-id]").forEach((btn) => {
       btn.addEventListener("click", async () => {
-        const nuevoValor = btn.dataset.devuelta !== "true";
-        const { error } = await sb.from("ventas").update({ devuelta: nuevoValor }).eq("id", btn.dataset.id);
+        const actual = Number(btn.dataset.monto) || 0;
+        const entrada = prompt(
+          `¿Cuánto se devolvió de esta venta (de ${formatCurrency(btn.dataset.precio)})? Escribe 0 para quitar la devolución.`,
+          actual || btn.dataset.precio
+        );
+        if (entrada === null) return;
+        const monto_devuelto = Number(entrada) || 0;
+        const { error } = await sb.from("ventas").update({ monto_devuelto }).eq("id", btn.dataset.id);
         if (error) alert("No se pudo actualizar: " + error.message);
         await onDone();
       });
@@ -538,7 +556,7 @@ async function initVentas(user, area) {
 
     ventasHoyBody.innerHTML = hoy?.length
       ? hoy.map((v) => ventaRowHTML(v, area, { conFecha: true })).join("")
-      : `<tr><td class="table-empty" colspan="10">Todavía no hay ventas registradas hoy.</td></tr>`;
+      : `<tr><td class="table-empty" colspan="11">Todavía no hay ventas registradas hoy.</td></tr>`;
     wireRow(ventasHoyBody, renderHoy);
   }
 
@@ -556,12 +574,12 @@ async function initVentas(user, area) {
 
     ventasMesBody.innerHTML = delMes?.length
       ? delMes.map((v) => ventaRowHTML(v, area, { conFecha: true })).join("")
-      : `<tr><td class="table-empty" colspan="10">Todavía no hay ventas ese mes.</td></tr>`;
+      : `<tr><td class="table-empty" colspan="11">Todavía no hay ventas ese mes.</td></tr>`;
     wireRow(ventasMesBody, () => renderMes(selectorMes.value));
 
-    const activas = (delMes || []).filter((v) => !v.devuelta);
-    const facturacion = activas.reduce((sum, v) => sum + Number(v.precio_venta), 0);
-    const beneficio = activas.reduce((sum, v) => sum + calcularBeneficio(v, area), 0);
+    const lista = delMes || [];
+    const facturacion = lista.reduce((sum, v) => sum + facturacionNeta(v), 0);
+    const beneficio = lista.reduce((sum, v) => sum + calcularBeneficio(v, area), 0);
     statFacturacion.textContent = formatCurrency(facturacion);
     statBeneficio.textContent = formatCurrency(beneficio);
     statMargen.textContent = facturacion ? `${((beneficio / facturacion) * 100).toFixed(0)}%` : "--";
@@ -577,11 +595,12 @@ async function initVentas(user, area) {
     const precio_venta = Number(document.getElementById("venta-precio").value);
     const costo = Number(document.getElementById("venta-costo").value) || 0;
     const envio = area === "ecommerce_meli" ? Number(document.getElementById("venta-envio").value) || 0 : 0;
+    const monto_devuelto = Number(document.getElementById("venta-devolucion").value) || 0;
     if (!descripcion || !precio_venta) return;
 
     const { error } = await sb
       .from("ventas")
-      .insert({ area, descripcion, cantidad, precio_venta, costo, envio, fecha, creado_por: user.id });
+      .insert({ area, descripcion, cantidad, precio_venta, costo, envio, monto_devuelto, fecha, creado_por: user.id });
     if (error) {
       alert("No se pudo registrar la venta: " + error.message);
       return;
@@ -637,9 +656,8 @@ async function initReporteVentas(area) {
       .order("fecha", { ascending: false });
 
     const lista = ventas || [];
-    const activas = lista.filter((v) => !v.devuelta);
-    const facturacion = activas.reduce((sum, v) => sum + Number(v.precio_venta), 0);
-    const beneficio = activas.reduce((sum, v) => sum + calcularBeneficio(v, area), 0);
+    const facturacion = lista.reduce((sum, v) => sum + facturacionNeta(v), 0);
+    const beneficio = lista.reduce((sum, v) => sum + calcularBeneficio(v, area), 0);
 
     document.getElementById("stat-facturacion").textContent = formatCurrency(facturacion);
     document.getElementById("stat-beneficio").textContent = formatCurrency(beneficio);
@@ -648,13 +666,13 @@ async function initReporteVentas(area) {
 
     document.getElementById("historial-ventas").innerHTML = lista.length
       ? lista.map((v) => ventaRowHTML(v, area, { conFecha: true, conAcciones: false })).join("")
-      : `<tr><td class="table-empty" colspan="9">Todavía no hay ventas ese mes.</td></tr>`;
+      : `<tr><td class="table-empty" colspan="10">Todavía no hay ventas ese mes.</td></tr>`;
 
     const porDia = Array.from({ length: diasEnMes }, () => ({ facturacion: 0, beneficio: 0 }));
-    activas.forEach((v) => {
+    lista.forEach((v) => {
       const dia = Number(v.fecha.slice(8, 10)) - 1;
       if (porDia[dia]) {
-        porDia[dia].facturacion += Number(v.precio_venta);
+        porDia[dia].facturacion += facturacionNeta(v);
         porDia[dia].beneficio += calcularBeneficio(v, area);
       }
     });
