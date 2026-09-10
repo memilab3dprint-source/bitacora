@@ -65,11 +65,13 @@ create table if not exists public.ventas (
   precio_venta numeric(10, 2) not null default 0,
   costo numeric(10, 2) not null default 0,
   envio numeric(10, 2) not null default 0,
+  devuelta boolean not null default false,
   creado_por uuid references auth.users (id),
   creado_en timestamptz not null default now()
 );
--- Nota: la comisión de MercadoLibre (17%) no se guarda como columna -- se
--- calcula siempre sobre precio_venta (ver COMISION_MELI en script.js).
+-- Nota: la comisión de MercadoLibre (17%) y el margen (%) no se guardan
+-- como columnas -- se calculan siempre a partir de los demás campos
+-- (ver COMISION_MELI y margenPct en script.js).
 
 -- 5) Jornada (una fila por encargado y día)
 create table if not exists public.jornada (

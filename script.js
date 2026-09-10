@@ -446,18 +446,31 @@ async function initBancoDeTrabajo(user, area) {
 
 // ---------- Ventas (Banco de Trabajo de Ecommerce MercadoLibre / Dropshipping) ----------
 
+function margenPct(v, area) {
+  const precio = Number(v.precio_venta);
+  return precio ? (calcularBeneficio(v, area) / precio) * 100 : 0;
+}
+
 function ventaRowHTML(v, area, { conFecha = false, conAcciones = true } = {}) {
   const beneficio = calcularBeneficio(v, area);
-  return `<tr>
+  return `<tr class="${v.devuelta ? "fila-devuelta" : ""}">
     ${conFecha ? `<td>${v.fecha}</td>` : ""}
-    <td>${v.descripcion}</td>
+    <td>${v.descripcion}${v.devuelta ? '<span class="badge badge-devuelta">Devuelta</span>' : ""}</td>
     <td>${v.cantidad}</td>
     <td>${formatCurrency(v.precio_venta)}</td>
     <td>${formatCurrency(v.costo)}</td>
     <td class="solo-meli">${formatCurrency(v.envio)}</td>
     <td class="solo-meli">${formatCurrency(comisionMeli(v.precio_venta, area))}</td>
+    <td>${margenPct(v, area).toFixed(0)}%</td>
     <td>${formatCurrency(beneficio)}</td>
-    ${conAcciones ? `<td><button class="btn btn-danger" data-id="${v.id}">Eliminar</button></td>` : ""}
+    ${
+      conAcciones
+        ? `<td><div class="row-actions">
+            <button class="btn btn-secondary btn-toggle-devuelta" data-id="${v.id}" data-devuelta="${v.devuelta ? "true" : "false"}">${v.devuelta ? "Deshacer" : "Devuelta"}</button>
+            <button class="btn btn-danger" data-id="${v.id}">Eliminar</button>
+          </div></td>`
+        : ""
+    }
   </tr>`;
 }
 
@@ -467,6 +480,7 @@ async function initVentas(user, area) {
   const ventasMesBody = document.getElementById("ventas-mes");
   const statFacturacion = document.getElementById("stat-facturacion");
   const statBeneficio = document.getElementById("stat-beneficio");
+  const statMargen = document.getElementById("stat-margen");
   const selectorMes = document.getElementById("selector-mes");
   selectorMes.value = mesActualStr();
 
@@ -496,11 +510,19 @@ async function initVentas(user, area) {
     if (producto) precioInput.value = producto.precio;
   });
 
-  function wireDelete(container, onDone) {
-    container.querySelectorAll("[data-id]").forEach((btn) => {
+  function wireRow(container, onDone) {
+    container.querySelectorAll(".btn-danger[data-id]").forEach((btn) => {
       btn.addEventListener("click", async () => {
         const { error } = await sb.from("ventas").delete().eq("id", btn.dataset.id);
         if (error) alert("No se pudo eliminar: " + error.message);
+        await onDone();
+      });
+    });
+    container.querySelectorAll(".btn-toggle-devuelta[data-id]").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        const nuevoValor = btn.dataset.devuelta !== "true";
+        const { error } = await sb.from("ventas").update({ devuelta: nuevoValor }).eq("id", btn.dataset.id);
+        if (error) alert("No se pudo actualizar: " + error.message);
         await onDone();
       });
     });
@@ -516,8 +538,8 @@ async function initVentas(user, area) {
 
     ventasHoyBody.innerHTML = hoy?.length
       ? hoy.map((v) => ventaRowHTML(v, area, { conFecha: true })).join("")
-      : `<tr><td class="table-empty" colspan="9">Todavía no hay ventas registradas hoy.</td></tr>`;
-    wireDelete(ventasHoyBody, renderHoy);
+      : `<tr><td class="table-empty" colspan="10">Todavía no hay ventas registradas hoy.</td></tr>`;
+    wireRow(ventasHoyBody, renderHoy);
   }
 
   async function renderMes(mesStr) {
@@ -534,13 +556,15 @@ async function initVentas(user, area) {
 
     ventasMesBody.innerHTML = delMes?.length
       ? delMes.map((v) => ventaRowHTML(v, area, { conFecha: true })).join("")
-      : `<tr><td class="table-empty" colspan="9">Todavía no hay ventas ese mes.</td></tr>`;
-    wireDelete(ventasMesBody, () => renderMes(selectorMes.value));
+      : `<tr><td class="table-empty" colspan="10">Todavía no hay ventas ese mes.</td></tr>`;
+    wireRow(ventasMesBody, () => renderMes(selectorMes.value));
 
-    const facturacion = (delMes || []).reduce((sum, v) => sum + Number(v.precio_venta), 0);
-    const beneficio = (delMes || []).reduce((sum, v) => sum + calcularBeneficio(v, area), 0);
+    const activas = (delMes || []).filter((v) => !v.devuelta);
+    const facturacion = activas.reduce((sum, v) => sum + Number(v.precio_venta), 0);
+    const beneficio = activas.reduce((sum, v) => sum + calcularBeneficio(v, area), 0);
     statFacturacion.textContent = formatCurrency(facturacion);
     statBeneficio.textContent = formatCurrency(beneficio);
+    statMargen.textContent = facturacion ? `${((beneficio / facturacion) * 100).toFixed(0)}%` : "--";
   }
 
   selectorMes.addEventListener("change", () => renderMes(selectorMes.value));
@@ -613,19 +637,21 @@ async function initReporteVentas(area) {
       .order("fecha", { ascending: false });
 
     const lista = ventas || [];
-    const facturacion = lista.reduce((sum, v) => sum + Number(v.precio_venta), 0);
-    const beneficio = lista.reduce((sum, v) => sum + calcularBeneficio(v, area), 0);
+    const activas = lista.filter((v) => !v.devuelta);
+    const facturacion = activas.reduce((sum, v) => sum + Number(v.precio_venta), 0);
+    const beneficio = activas.reduce((sum, v) => sum + calcularBeneficio(v, area), 0);
 
     document.getElementById("stat-facturacion").textContent = formatCurrency(facturacion);
     document.getElementById("stat-beneficio").textContent = formatCurrency(beneficio);
     document.getElementById("stat-ventas").textContent = lista.length;
+    document.getElementById("stat-margen").textContent = facturacion ? `${((beneficio / facturacion) * 100).toFixed(0)}%` : "--";
 
     document.getElementById("historial-ventas").innerHTML = lista.length
       ? lista.map((v) => ventaRowHTML(v, area, { conFecha: true, conAcciones: false })).join("")
-      : `<tr><td class="table-empty" colspan="8">Todavía no hay ventas ese mes.</td></tr>`;
+      : `<tr><td class="table-empty" colspan="9">Todavía no hay ventas ese mes.</td></tr>`;
 
     const porDia = Array.from({ length: diasEnMes }, () => ({ facturacion: 0, beneficio: 0 }));
-    lista.forEach((v) => {
+    activas.forEach((v) => {
       const dia = Number(v.fecha.slice(8, 10)) - 1;
       if (porDia[dia]) {
         porDia[dia].facturacion += Number(v.precio_venta);

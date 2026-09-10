@@ -81,7 +81,7 @@
       <div class="table-wrap">
         <table>
           <thead>
-            <tr><th>Fecha</th><th>Producto</th><th>Cantidad</th><th>Precio</th><th>Costo</th><th class="solo-meli">Envío</th><th class="solo-meli">Comisión</th><th>Beneficio</th><th></th></tr>
+            <tr><th>Fecha</th><th>Producto</th><th>Cantidad</th><th>Precio</th><th>Costo</th><th class="solo-meli">Envío</th><th class="solo-meli">Comisión</th><th>Margen</th><th>Beneficio</th><th></th></tr>
           </thead>
           <tbody id="ventas-hoy"></tbody>
         </table>
@@ -93,7 +93,7 @@
       <input type="month" id="selector-mes" />
     </div>
 
-    <div class="stat-grid" style="grid-template-columns: repeat(2, 1fr);">
+    <div class="stat-grid" style="grid-template-columns: repeat(3, 1fr);">
       <div class="stat-card">
         <div class="stat-value" id="stat-facturacion">--</div>
         <div class="stat-label">Facturación del mes</div>
@@ -102,6 +102,10 @@
         <div class="stat-value" id="stat-beneficio">--</div>
         <div class="stat-label">Beneficios del mes</div>
       </div>
+      <div class="stat-card">
+        <div class="stat-value" id="stat-margen">--</div>
+        <div class="stat-label">Margen promedio</div>
+      </div>
     </div>
 
     <div class="panel" style="margin-top:20px;">
@@ -109,7 +113,7 @@
       <div class="table-wrap">
         <table>
           <thead>
-            <tr><th>Fecha</th><th>Producto</th><th>Cantidad</th><th>Precio</th><th>Costo</th><th class="solo-meli">Envío</th><th class="solo-meli">Comisión</th><th>Beneficio</th><th></th></tr>
+            <tr><th>Fecha</th><th>Producto</th><th>Cantidad</th><th>Precio</th><th>Costo</th><th class="solo-meli">Envío</th><th class="solo-meli">Comisión</th><th>Margen</th><th>Beneficio</th><th></th></tr>
           </thead>
           <tbody id="ventas-mes"></tbody>
         </table>
