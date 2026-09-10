@@ -330,40 +330,113 @@ async function initInventario(area) {
   const linkAgregar = document.querySelector('a[href^="agregar-producto.html"]');
   if (linkAgregar) linkAgregar.href = `agregar-producto.html?area=${area}`;
 
-  async function render() {
-    const { data: productos } = await sb
-      .from("productos")
-      .select("*")
-      .eq("area", area)
-      .order("nombre", { ascending: true });
+  let productosCache = [];
 
-    body.innerHTML = productos?.length
-      ? productos
-          .map(
-            (p) => `<tr>
-              <td>${p.nombre}</td>
-              <td>${p.categoria || "--"}</td>
-              <td>${p.cantidad}</td>
-              <td>${formatCurrency(p.precio)}</td>
-              <td>${formatCurrency(p.cantidad * p.precio)}</td>
-              <td><button class="btn btn-danger" data-id="${p.id}">Eliminar</button></td>
-            </tr>`
-          )
-          .join("")
-      : `<tr><td class="table-empty" colspan="6">No hay productos en el inventario todavía. <a href="agregar-producto.html?area=${area}">Agrega el primero</a>.</td></tr>`;
+  function filaHTML(p) {
+    return `<tr data-id="${p.id}">
+      <td>${p.nombre}</td>
+      <td>${p.categoria || "--"}</td>
+      <td>${p.cantidad}</td>
+      <td>${formatCurrency(p.precio)}</td>
+      <td>${formatCurrency(p.cantidad * p.precio)}</td>
+      <td><div class="row-actions">
+        <button class="btn btn-secondary btn-agregar-stock" data-id="${p.id}">+ Stock</button>
+        <button class="btn btn-secondary btn-editar-producto" data-id="${p.id}">Editar</button>
+        <button class="btn btn-danger" data-id="${p.id}">Eliminar</button>
+      </div></td>
+    </tr>`;
+  }
 
-    const totalUnidades = (productos || []).reduce((sum, p) => sum + Number(p.cantidad), 0);
-    const totalValor = (productos || []).reduce((sum, p) => sum + Number(p.cantidad) * Number(p.precio), 0);
-    totalUnidadesEl.textContent = totalUnidades;
-    totalValorEl.textContent = formatCurrency(totalValor);
+  function filaEdicionHTML(p) {
+    return `<tr data-id="${p.id}">
+      <td><input type="text" class="edit-nombre" value="${p.nombre}" /></td>
+      <td><input type="text" class="edit-categoria" value="${p.categoria || ""}" /></td>
+      <td><input type="number" class="edit-cantidad" value="${p.cantidad}" min="0" step="1" /></td>
+      <td><input type="number" class="edit-precio" value="${p.precio}" min="0" step="1" /></td>
+      <td>--</td>
+      <td><div class="row-actions">
+        <button class="btn btn-primary btn-guardar-producto" data-id="${p.id}">Guardar</button>
+        <button class="btn btn-secondary btn-cancelar-edicion" data-id="${p.id}">Cancelar</button>
+      </div></td>
+    </tr>`;
+  }
 
-    body.querySelectorAll("[data-id]").forEach((btn) => {
+  function wireFila() {
+    body.querySelectorAll(".btn-danger[data-id]").forEach((btn) => {
       btn.addEventListener("click", async () => {
         const { error } = await sb.from("productos").delete().eq("id", btn.dataset.id);
         if (error) alert("No se pudo eliminar: " + error.message);
         await render();
       });
     });
+
+    body.querySelectorAll(".btn-agregar-stock[data-id]").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        const entrada = prompt("¿Cuántas unidades llegaron?", "");
+        if (entrada === null) return;
+        const cantidadAgregar = Number(entrada);
+        if (!cantidadAgregar) return;
+        const producto = productosCache.find((p) => p.id === btn.dataset.id);
+        const nuevaCantidad = (producto?.cantidad || 0) + cantidadAgregar;
+        const { error } = await sb.from("productos").update({ cantidad: nuevaCantidad }).eq("id", btn.dataset.id);
+        if (error) alert("No se pudo actualizar el stock: " + error.message);
+        await render();
+      });
+    });
+
+    body.querySelectorAll(".btn-editar-producto[data-id]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const producto = productosCache.find((p) => p.id === btn.dataset.id);
+        if (!producto) return;
+        body.querySelector(`tr[data-id="${producto.id}"]`).outerHTML = filaEdicionHTML(producto);
+        wireFila();
+      });
+    });
+
+    body.querySelectorAll(".btn-cancelar-edicion[data-id]").forEach((btn) => {
+      btn.addEventListener("click", render);
+    });
+
+    body.querySelectorAll(".btn-guardar-producto[data-id]").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        const fila = body.querySelector(`tr[data-id="${btn.dataset.id}"]`);
+        const nombre = fila.querySelector(".edit-nombre").value.trim();
+        const categoria = fila.querySelector(".edit-categoria").value.trim();
+        const cantidad = Number(fila.querySelector(".edit-cantidad").value) || 0;
+        const precio = Number(fila.querySelector(".edit-precio").value) || 0;
+        if (!nombre) return;
+
+        const { error } = await sb
+          .from("productos")
+          .update({ nombre, categoria, cantidad, precio })
+          .eq("id", btn.dataset.id);
+        if (error) {
+          alert("No se pudo guardar: " + error.message);
+          return;
+        }
+        await render();
+      });
+    });
+  }
+
+  async function render() {
+    const { data: productos } = await sb
+      .from("productos")
+      .select("*")
+      .eq("area", area)
+      .order("nombre", { ascending: true });
+    productosCache = productos || [];
+
+    body.innerHTML = productosCache.length
+      ? productosCache.map(filaHTML).join("")
+      : `<tr><td class="table-empty" colspan="6">No hay productos en el inventario todavía. <a href="agregar-producto.html?area=${area}">Agrega el primero</a>.</td></tr>`;
+
+    const totalUnidades = productosCache.reduce((sum, p) => sum + Number(p.cantidad), 0);
+    const totalValor = productosCache.reduce((sum, p) => sum + Number(p.cantidad) * Number(p.precio), 0);
+    totalUnidadesEl.textContent = totalUnidades;
+    totalValorEl.textContent = formatCurrency(totalValor);
+
+    wireFila();
   }
 
   await render();
