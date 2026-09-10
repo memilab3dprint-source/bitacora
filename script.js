@@ -45,6 +45,32 @@ function inicioDeMes(offsetMeses = 0) {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-01`;
 }
 
+function mesActualStr() {
+  const d = new Date();
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}`;
+}
+
+function primerDiaDeMes(mesStr) {
+  return `${mesStr}-01`;
+}
+
+function primerDiaMesSiguiente(mesStr) {
+  const [y, m] = mesStr.split("-").map(Number);
+  const d = new Date(y, m, 1);
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-01`;
+}
+
+function diasEnMesStr(mesStr) {
+  const [y, m] = mesStr.split("-").map(Number);
+  return new Date(y, m, 0).getDate();
+}
+
+function nombreDeMesStr(mesStr) {
+  const [y, m] = mesStr.split("-").map(Number);
+  const texto = new Date(y, m - 1, 1).toLocaleDateString("es-ES", { month: "long", year: "numeric" });
+  return texto.charAt(0).toUpperCase() + texto.slice(1);
+}
+
 const AREAS = {
   impresion_3d: "Impresión 3D",
   ecommerce_meli: "Ecommerce MercadoLibre",
@@ -441,8 +467,8 @@ async function initVentas(user, area) {
   const ventasMesBody = document.getElementById("ventas-mes");
   const statFacturacion = document.getElementById("stat-facturacion");
   const statBeneficio = document.getElementById("stat-beneficio");
-  const inicioMes = inicioDeMes(0);
-  const inicioMesSiguiente = inicioDeMes(1);
+  const selectorMes = document.getElementById("selector-mes");
+  selectorMes.value = mesActualStr();
 
   const notaComision = document.getElementById("nota-comision");
   if (notaComision) notaComision.textContent = `Se descuenta automáticamente la comisión de MercadoLibre (${(COMISION_MELI * 100).toFixed(0)}% del precio de venta).`;
@@ -470,17 +496,17 @@ async function initVentas(user, area) {
     if (producto) precioInput.value = producto.precio;
   });
 
-  function wireDelete(container) {
+  function wireDelete(container, onDone) {
     container.querySelectorAll("[data-id]").forEach((btn) => {
       btn.addEventListener("click", async () => {
         const { error } = await sb.from("ventas").delete().eq("id", btn.dataset.id);
         if (error) alert("No se pudo eliminar: " + error.message);
-        await render();
+        await onDone();
       });
     });
   }
 
-  async function render() {
+  async function renderHoy() {
     const { data: hoy } = await sb
       .from("ventas")
       .select("*")
@@ -491,7 +517,12 @@ async function initVentas(user, area) {
     ventasHoyBody.innerHTML = hoy?.length
       ? hoy.map((v) => ventaRowHTML(v, area, { conFecha: true })).join("")
       : `<tr><td class="table-empty" colspan="9">Todavía no hay ventas registradas hoy.</td></tr>`;
-    wireDelete(ventasHoyBody);
+    wireDelete(ventasHoyBody, renderHoy);
+  }
+
+  async function renderMes(mesStr) {
+    const inicioMes = primerDiaDeMes(mesStr);
+    const inicioMesSiguiente = primerDiaMesSiguiente(mesStr);
 
     const { data: delMes } = await sb
       .from("ventas")
@@ -503,14 +534,16 @@ async function initVentas(user, area) {
 
     ventasMesBody.innerHTML = delMes?.length
       ? delMes.map((v) => ventaRowHTML(v, area, { conFecha: true })).join("")
-      : `<tr><td class="table-empty" colspan="9">Todavía no hay ventas este mes.</td></tr>`;
-    wireDelete(ventasMesBody);
+      : `<tr><td class="table-empty" colspan="9">Todavía no hay ventas ese mes.</td></tr>`;
+    wireDelete(ventasMesBody, () => renderMes(selectorMes.value));
 
     const facturacion = (delMes || []).reduce((sum, v) => sum + Number(v.precio_venta), 0);
     const beneficio = (delMes || []).reduce((sum, v) => sum + calcularBeneficio(v, area), 0);
     statFacturacion.textContent = formatCurrency(facturacion);
     statBeneficio.textContent = formatCurrency(beneficio);
   }
+
+  selectorMes.addEventListener("change", () => renderMes(selectorMes.value));
 
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -543,73 +576,83 @@ async function initVentas(user, area) {
     form.reset();
     document.getElementById("venta-cantidad").value = 1;
     fechaInput.value = todayKey();
-    await render();
+    await Promise.all([renderHoy(), renderMes(selectorMes.value)]);
   });
 
-  await render();
+  await Promise.all([renderHoy(), renderMes(selectorMes.value)]);
 
   sb.channel(`ventas-${area}`)
-    .on("postgres_changes", { event: "*", schema: "public", table: "ventas", filter: `area=eq.${area}` }, render)
+    .on(
+      "postgres_changes",
+      { event: "*", schema: "public", table: "ventas", filter: `area=eq.${area}` },
+      () => Promise.all([renderHoy(), renderMes(selectorMes.value)])
+    )
     .subscribe();
 }
 
 // ---------- Reporte de Ventas (Reporte del Mes de Ecommerce MercadoLibre / Dropshipping) ----------
 
 async function initReporteVentas(area) {
-  const inicioMes = inicioDeMes(0);
-  const inicioMesSiguiente = inicioDeMes(1);
-  const ahora = new Date();
-  const diasEnMes = new Date(ahora.getFullYear(), ahora.getMonth() + 1, 0).getDate();
+  const selectorMes = document.getElementById("selector-mes");
+  selectorMes.value = mesActualStr();
+  let chart = null;
 
-  document.getElementById("mes-nombre").textContent = new Date().toLocaleDateString("es-ES", {
-    month: "long",
-    year: "numeric",
-  });
+  async function renderMes(mesStr) {
+    const inicioMes = primerDiaDeMes(mesStr);
+    const inicioMesSiguiente = primerDiaMesSiguiente(mesStr);
+    const diasEnMes = diasEnMesStr(mesStr);
 
-  const { data: ventas } = await sb
-    .from("ventas")
-    .select("*")
-    .eq("area", area)
-    .gte("fecha", inicioMes)
-    .lt("fecha", inicioMesSiguiente)
-    .order("fecha", { ascending: false });
+    document.getElementById("mes-nombre").textContent = nombreDeMesStr(mesStr);
 
-  const lista = ventas || [];
-  const facturacion = lista.reduce((sum, v) => sum + Number(v.precio_venta), 0);
-  const beneficio = lista.reduce((sum, v) => sum + calcularBeneficio(v, area), 0);
+    const { data: ventas } = await sb
+      .from("ventas")
+      .select("*")
+      .eq("area", area)
+      .gte("fecha", inicioMes)
+      .lt("fecha", inicioMesSiguiente)
+      .order("fecha", { ascending: false });
 
-  document.getElementById("stat-facturacion").textContent = formatCurrency(facturacion);
-  document.getElementById("stat-beneficio").textContent = formatCurrency(beneficio);
-  document.getElementById("stat-ventas").textContent = lista.length;
+    const lista = ventas || [];
+    const facturacion = lista.reduce((sum, v) => sum + Number(v.precio_venta), 0);
+    const beneficio = lista.reduce((sum, v) => sum + calcularBeneficio(v, area), 0);
 
-  document.getElementById("historial-ventas").innerHTML = lista.length
-    ? lista.map((v) => ventaRowHTML(v, area, { conFecha: true, conAcciones: false })).join("")
-    : `<tr><td class="table-empty" colspan="8">Todavía no hay ventas este mes.</td></tr>`;
+    document.getElementById("stat-facturacion").textContent = formatCurrency(facturacion);
+    document.getElementById("stat-beneficio").textContent = formatCurrency(beneficio);
+    document.getElementById("stat-ventas").textContent = lista.length;
 
-  const porDia = Array.from({ length: diasEnMes }, () => ({ facturacion: 0, beneficio: 0 }));
-  lista.forEach((v) => {
-    const dia = Number(v.fecha.slice(8, 10)) - 1;
-    if (porDia[dia]) {
-      porDia[dia].facturacion += Number(v.precio_venta);
-      porDia[dia].beneficio += calcularBeneficio(v, area);
-    }
-  });
+    document.getElementById("historial-ventas").innerHTML = lista.length
+      ? lista.map((v) => ventaRowHTML(v, area, { conFecha: true, conAcciones: false })).join("")
+      : `<tr><td class="table-empty" colspan="8">Todavía no hay ventas ese mes.</td></tr>`;
 
-  new Chart(document.getElementById("grafica-ventas"), {
-    type: "bar",
-    data: {
-      labels: porDia.map((_, i) => i + 1),
-      datasets: [
-        { label: "Facturación", data: porDia.map((d) => d.facturacion.toFixed(2)), backgroundColor: "#2563eb" },
-        { label: "Beneficio", data: porDia.map((d) => d.beneficio.toFixed(2)), backgroundColor: "#16a34a" },
-      ],
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      scales: { x: { title: { display: true, text: "Día del mes" } } },
-    },
-  });
+    const porDia = Array.from({ length: diasEnMes }, () => ({ facturacion: 0, beneficio: 0 }));
+    lista.forEach((v) => {
+      const dia = Number(v.fecha.slice(8, 10)) - 1;
+      if (porDia[dia]) {
+        porDia[dia].facturacion += Number(v.precio_venta);
+        porDia[dia].beneficio += calcularBeneficio(v, area);
+      }
+    });
+
+    if (chart) chart.destroy();
+    chart = new Chart(document.getElementById("grafica-ventas"), {
+      type: "bar",
+      data: {
+        labels: porDia.map((_, i) => i + 1),
+        datasets: [
+          { label: "Facturación", data: porDia.map((d) => d.facturacion.toFixed(2)), backgroundColor: "#2563eb" },
+          { label: "Beneficio", data: porDia.map((d) => d.beneficio.toFixed(2)), backgroundColor: "#16a34a" },
+        ],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: { x: { title: { display: true, text: "Día del mes" } } },
+      },
+    });
+  }
+
+  selectorMes.addEventListener("change", () => renderMes(selectorMes.value));
+  await renderMes(selectorMes.value);
 }
 
 // ---------- Reporte del Mes ----------
