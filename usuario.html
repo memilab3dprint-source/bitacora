@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Usuario — Dashboard</title>
+  <meta name="description" content="Datos del encargado responsable de las tareas del taller." />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body data-page="usuario">
+  <header class="topbar">
+    <a class="brand" href="index.html">
+      <span class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="3" width="7" height="7" rx="1.5"></rect>
+          <rect x="14" y="3" width="7" height="7" rx="1.5"></rect>
+          <rect x="3" y="14" width="7" height="7" rx="1.5"></rect>
+          <rect x="14" y="14" width="7" height="7" rx="1.5"></rect>
+        </svg>
+      </span>
+      <span class="brand-name">Dashboard</span>
+    </a>
+    <div class="user-chip">
+      <span class="user-avatar" id="user-avatar" aria-hidden="true">--</span>
+      <span class="user-info">
+        <span class="user-role" id="user-nombre">Cargando…</span>
+        <span class="user-date" id="today-date"></span>
+      </span>
+      <button class="btn btn-secondary btn-logout" id="btn-logout" type="button">Salir</button>
+    </div>
+  </header>
+
+  <main>
+    <a class="back-link" href="index.html">&larr; Volver al panel</a>
+    <h1 class="page-title">Usuario</h1>
+    <p class="page-subtitle">Datos del encargado responsable de estas tareas.</p>
+
+    <div class="panel">
+      <form id="form-usuario" onsubmit="return false">
+        <div class="form-grid">
+          <div class="field">
+            <label for="usuario-nombre">Nombre</label>
+            <input id="usuario-nombre" type="text" placeholder="Escribe tu nombre" />
+          </div>
+          <div class="field">
+            <label>Rol</label>
+            <input type="text" value="Encargado de taller" disabled />
+          </div>
+        </div>
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary">Guardar</button>
+          <span class="form-hint" id="usuario-guardado" hidden>Guardado.</span>
+        </div>
+      </form>
+    </div>
+
+    <div class="panel">
+      <h2>Resumen de actividad</h2>
+      <div class="jornada-horas">
+        <div><span>Estado hoy</span><strong id="resumen-estado-hoy">--</strong></div>
+        <div><span>Productos registrados</span><strong id="resumen-productos">0</strong></div>
+        <div><span>Órdenes activas</span><strong id="resumen-ordenes">0</strong></div>
+      </div>
+    </div>
+  </main>
+
+  <footer class="page-footer">
+    <p>Dashboard — panel interno del taller</p>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <script src="config.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>

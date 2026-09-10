@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard — Panel de control del taller</title>
+  <meta name="description" content="Panel de control interno: registra tu jornada, gestiona el inventario, el banco de trabajo y los reportes mensuales del taller." />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body data-page="dashboard">
+  <header class="topbar">
+    <a class="brand" href="index.html">
+      <span class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="3" width="7" height="7" rx="1.5"></rect>
+          <rect x="14" y="3" width="7" height="7" rx="1.5"></rect>
+          <rect x="3" y="14" width="7" height="7" rx="1.5"></rect>
+          <rect x="14" y="14" width="7" height="7" rx="1.5"></rect>
+        </svg>
+      </span>
+      <span class="brand-name">Dashboard</span>
+    </a>
+
+    <div class="user-chip">
+      <span class="user-avatar" id="user-avatar" aria-hidden="true">--</span>
+      <span class="user-info">
+        <span class="user-role" id="user-nombre">Cargando…</span>
+        <span class="user-date" id="today-date"></span>
+      </span>
+      <button class="btn btn-secondary btn-logout" id="btn-logout" type="button">Salir</button>
+    </div>
+  </header>
+
+  <main>
+    <section class="intro">
+      <h1>Bienvenido</h1>
+      <p>Elige un módulo para empezar a trabajar.</p>
+    </section>
+
+    <h2 class="section-title">General</h2>
+    <section class="modules" aria-label="Módulos generales">
+
+      <a class="card" href="mi-jornada.html">
+        <span class="card-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="9"></circle>
+            <path d="M12 7v5l3 3"></path>
+          </svg>
+        </span>
+        <span class="card-title">Mi Jornada</span>
+        <p class="card-desc">Registra tu hora de entrada y salida del día.</p>
+      </a>
+
+      <a class="card" href="usuario.html">
+        <span class="card-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="8" r="4"></circle>
+            <path d="M4 21c0-4 4-6 8-6s8 2 8 6"></path>
+          </svg>
+        </span>
+        <span class="card-title">Usuario</span>
+        <p class="card-desc">Datos del encargado responsable de estas tareas.</p>
+      </a>
+
+    </section>
+
+    <h2 class="section-title">Áreas de trabajo</h2>
+    <section class="modules" aria-label="Áreas de trabajo">
+
+      <a class="card" href="area.html?area=impresion_3d">
+        <span class="card-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2 2 7l10 5 10-5-10-5z"></path>
+            <path d="M2 17l10 5 10-5"></path>
+            <path d="M2 12l10 5 10-5"></path>
+          </svg>
+        </span>
+        <span class="card-title">Impresión 3D</span>
+        <p class="card-desc">Inventario, producción y pedidos de impresión 3D.</p>
+      </a>
+
+      <a class="card" href="area.html?area=ecommerce_meli">
+        <span class="card-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"></path>
+            <path d="M3 6h18"></path>
+            <path d="M16 10a4 4 0 0 1-8 0"></path>
+          </svg>
+        </span>
+        <span class="card-title">Ecommerce MercadoLibre</span>
+        <p class="card-desc">Inventario y ventas de la tienda en MercadoLibre.</p>
+      </a>
+
+      <a class="card" href="area.html?area=dropshipping">
+        <span class="card-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="1" y="3" width="15" height="13"></rect>
+            <path d="M16 8h4l3 3v5h-7z"></path>
+            <circle cx="5.5" cy="18.5" r="1.5"></circle>
+            <circle cx="18.5" cy="18.5" r="1.5"></circle>
+          </svg>
+        </span>
+        <span class="card-title">Dropshipping</span>
+        <p class="card-desc">Inventario y pedidos del negocio de dropshipping.</p>
+      </a>
+
+    </section>
+  </main>
+
+  <footer class="page-footer">
+    <p>Dashboard — panel interno del taller</p>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <script src="config.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>

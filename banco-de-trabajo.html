@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Banco de Trabajo — Dashboard</title>
+  <meta name="description" content="Consulta y gestiona las órdenes de trabajo activas del taller." />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body data-page="banco-de-trabajo">
+  <header class="topbar">
+    <a class="brand" href="index.html">
+      <span class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="3" width="7" height="7" rx="1.5"></rect>
+          <rect x="14" y="3" width="7" height="7" rx="1.5"></rect>
+          <rect x="3" y="14" width="7" height="7" rx="1.5"></rect>
+          <rect x="14" y="14" width="7" height="7" rx="1.5"></rect>
+        </svg>
+      </span>
+      <span class="brand-name">Dashboard</span>
+    </a>
+    <div class="user-chip">
+      <span class="user-avatar" id="user-avatar" aria-hidden="true">--</span>
+      <span class="user-info">
+        <span class="user-role" id="user-nombre">Cargando…</span>
+        <span class="user-date" id="today-date"></span>
+      </span>
+      <button class="btn btn-secondary btn-logout" id="btn-logout" type="button">Salir</button>
+    </div>
+  </header>
+
+  <main>
+    <a class="back-link" id="back-link" href="index.html">&larr; Volver al panel</a>
+    <h1 class="page-title">Banco de Trabajo</h1>
+    <p class="area-tag" id="area-tag"></p>
+    <p class="page-subtitle">Consulta y gestiona las órdenes de trabajo activas de esta área.</p>
+
+    <div class="panel">
+      <form id="form-orden" onsubmit="return false">
+        <div class="form-grid">
+          <div class="field">
+            <label for="orden-titulo">Título de la orden</label>
+            <input id="orden-titulo" type="text" required placeholder="Ej. Reparar motor cliente García" />
+          </div>
+          <div class="field">
+            <label for="orden-cliente">Cliente</label>
+            <input id="orden-cliente" type="text" placeholder="Ej. Juan García" />
+          </div>
+        </div>
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary">Crear orden</button>
+          <span class="form-hint">Se crea como "Pendiente".</span>
+        </div>
+      </form>
+    </div>
+
+    <div class="kanban">
+      <div class="kanban-column" id="columna-pendiente"></div>
+      <div class="kanban-column" id="columna-en_proceso"></div>
+      <div class="kanban-column" id="columna-terminado"></div>
+    </div>
+  </main>
+
+  <footer class="page-footer">
+    <p>Dashboard — panel interno del taller</p>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <script src="config.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>
