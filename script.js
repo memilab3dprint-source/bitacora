@@ -449,8 +449,10 @@ async function initVentas(user, area) {
 
   const descripcionInput = document.getElementById("venta-descripcion");
   const precioInput = document.getElementById("venta-precio");
+  const fechaInput = document.getElementById("venta-fecha");
   const listaInventario = document.getElementById("lista-inventario");
   const productosPorNombre = new Map();
+  fechaInput.value = todayKey();
 
   const { data: productosInventario } = await sb
     .from("productos")
@@ -513,6 +515,7 @@ async function initVentas(user, area) {
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
     const descripcion = document.getElementById("venta-descripcion").value.trim();
+    const fecha = fechaInput.value || todayKey();
     const cantidad = Number(document.getElementById("venta-cantidad").value) || 1;
     const precio_venta = Number(document.getElementById("venta-precio").value);
     const costo = Number(document.getElementById("venta-costo").value) || 0;
@@ -521,7 +524,7 @@ async function initVentas(user, area) {
 
     const { error } = await sb
       .from("ventas")
-      .insert({ area, descripcion, cantidad, precio_venta, costo, envio, fecha: todayKey(), creado_por: user.id });
+      .insert({ area, descripcion, cantidad, precio_venta, costo, envio, fecha, creado_por: user.id });
     if (error) {
       alert("No se pudo registrar la venta: " + error.message);
       return;
@@ -539,6 +542,7 @@ async function initVentas(user, area) {
 
     form.reset();
     document.getElementById("venta-cantidad").value = 1;
+    fechaInput.value = todayKey();
     await render();
   });
 
