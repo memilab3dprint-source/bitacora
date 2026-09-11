@@ -66,9 +66,12 @@ create table if not exists public.ventas (
   costo numeric(10, 2) not null default 0,
   envio numeric(10, 2) not null default 0,
   monto_devuelto numeric(10, 2) not null default 0,
+  cuenta text not null default '',
   creado_por uuid references auth.users (id),
   creado_en timestamptz not null default now()
 );
+-- "cuenta" es la cuenta de MercadoLibre (solo se usa en el área
+-- ecommerce_meli, para separar cuánto se vendió en cada cuenta).
 -- Nota: la comisión de MercadoLibre (17%) y el margen (%) no se guardan
 -- como columnas -- se calculan siempre a partir de los demás campos
 -- (ver COMISION_MELI y margenPct en script.js).
@@ -81,6 +84,7 @@ create table if not exists public.publicidad (
   fecha date not null default current_date,
   descripcion text not null,
   monto numeric(10, 2) not null default 0,
+  cuenta text not null default '',
   creado_por uuid references auth.users (id),
   creado_en timestamptz not null default now()
 );

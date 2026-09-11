@@ -67,6 +67,11 @@
             <label for="venta-envio">Envío (CLP)</label>
             <input id="venta-envio" type="number" min="0" step="1" placeholder="0" />
           </div>
+          <div class="field solo-meli">
+            <label for="venta-cuenta">Cuenta de MercadoLibre</label>
+            <input id="venta-cuenta" type="text" placeholder="Ej. Cuenta principal" list="lista-cuentas" autocomplete="off" />
+            <datalist id="lista-cuentas"></datalist>
+          </div>
           <div class="field">
             <label for="venta-devolucion">Devolución (CLP)</label>
             <input id="venta-devolucion" type="number" min="0" step="1" value="0" placeholder="0" />
@@ -86,7 +91,7 @@
       <div class="table-wrap">
         <table>
           <thead>
-            <tr><th>Fecha</th><th>Producto</th><th>Cantidad</th><th>Precio</th><th>Costo</th><th class="solo-meli">Envío</th><th class="solo-meli">Comisión</th><th>Devolución</th><th>Margen</th><th>Beneficio</th><th></th></tr>
+            <tr><th>Fecha</th><th class="solo-meli">Cuenta</th><th>Producto</th><th>Cantidad</th><th>Precio</th><th>Costo</th><th class="solo-meli">Envío</th><th class="solo-meli">Comisión</th><th>Devolución</th><th>Margen</th><th>Beneficio</th><th></th></tr>
           </thead>
           <tbody id="ventas-hoy"></tbody>
         </table>
@@ -109,6 +114,10 @@
             <label for="publicidad-monto">Monto (CLP)</label>
             <input id="publicidad-monto" type="number" min="0" step="1" required placeholder="0" />
           </div>
+          <div class="field">
+            <label for="publicidad-cuenta">Cuenta de MercadoLibre</label>
+            <input id="publicidad-cuenta" type="text" placeholder="Ej. Cuenta principal" list="lista-cuentas" autocomplete="off" />
+          </div>
         </div>
         <div class="form-actions">
           <button type="submit" class="btn btn-primary">Registrar gasto</button>
@@ -118,7 +127,7 @@
       <div class="table-wrap" style="margin-top:16px;">
         <table>
           <thead>
-            <tr><th>Fecha</th><th>Campaña</th><th>Monto</th><th></th></tr>
+            <tr><th>Fecha</th><th>Cuenta</th><th>Campaña</th><th>Monto</th><th></th></tr>
           </thead>
           <tbody id="publicidad-lista"></tbody>
         </table>
@@ -128,9 +137,17 @@
       </div>
     </div>
 
-    <div class="field" style="max-width:220px; margin: 24px 0 16px;">
-      <label for="selector-mes">Mes a consultar</label>
-      <input type="month" id="selector-mes" />
+    <div style="display:flex; gap:14px; flex-wrap:wrap; margin: 24px 0 16px;">
+      <div class="field" style="max-width:220px;">
+        <label for="selector-mes">Mes a consultar</label>
+        <input type="month" id="selector-mes" />
+      </div>
+      <div class="field solo-meli" style="max-width:220px;">
+        <label for="selector-cuenta">Cuenta</label>
+        <select id="selector-cuenta">
+          <option value="">Todas las cuentas</option>
+        </select>
+      </div>
     </div>
 
     <div class="stat-grid" style="grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));">
@@ -157,7 +174,7 @@
       <div class="table-wrap">
         <table>
           <thead>
-            <tr><th>Fecha</th><th>Producto</th><th>Cantidad</th><th>Precio</th><th>Costo</th><th class="solo-meli">Envío</th><th class="solo-meli">Comisión</th><th>Devolución</th><th>Margen</th><th>Beneficio</th><th></th></tr>
+            <tr><th>Fecha</th><th class="solo-meli">Cuenta</th><th>Producto</th><th>Cantidad</th><th>Precio</th><th>Costo</th><th class="solo-meli">Envío</th><th class="solo-meli">Comisión</th><th>Devolución</th><th>Margen</th><th>Beneficio</th><th></th></tr>
           </thead>
           <tbody id="ventas-mes"></tbody>
         </table>

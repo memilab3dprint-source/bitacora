@@ -36,9 +36,17 @@
     <p class="area-tag" id="area-tag"></p>
     <p class="page-subtitle" id="mes-nombre">Gráficas de facturación, beneficios e historial de ventas.</p>
 
-    <div class="field" style="max-width:220px; margin-bottom:20px;">
-      <label for="selector-mes">Mes a consultar</label>
-      <input type="month" id="selector-mes" />
+    <div style="display:flex; gap:14px; flex-wrap:wrap; margin-bottom:20px;">
+      <div class="field" style="max-width:220px;">
+        <label for="selector-mes">Mes a consultar</label>
+        <input type="month" id="selector-mes" />
+      </div>
+      <div class="field solo-meli" style="max-width:220px;">
+        <label for="selector-cuenta">Cuenta</label>
+        <select id="selector-cuenta">
+          <option value="">Todas las cuentas</option>
+        </select>
+      </div>
     </div>
 
     <div class="stat-grid" style="grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));">
@@ -76,7 +84,7 @@
       <div class="table-wrap">
         <table>
           <thead>
-            <tr><th>Fecha</th><th>Producto</th><th>Cantidad</th><th>Precio</th><th>Costo</th><th class="solo-meli">Envío</th><th class="solo-meli">Comisión</th><th>Devolución</th><th>Margen</th><th>Beneficio</th></tr>
+            <tr><th>Fecha</th><th class="solo-meli">Cuenta</th><th>Producto</th><th>Cantidad</th><th>Precio</th><th>Costo</th><th class="solo-meli">Envío</th><th class="solo-meli">Comisión</th><th>Devolución</th><th>Margen</th><th>Beneficio</th></tr>
           </thead>
           <tbody id="historial-ventas"></tbody>
         </table>

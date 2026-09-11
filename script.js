@@ -534,11 +534,35 @@ function margenPct(v, area) {
   return precio ? (calcularBeneficio(v, area) / precio) * 100 : 0;
 }
 
+async function poblarCuentas(area, selectCuenta, datalistCuentas) {
+  const [{ data: dv }, { data: dp }] = await Promise.all([
+    sb.from("ventas").select("cuenta").eq("area", area),
+    sb.from("publicidad").select("cuenta").eq("area", area),
+  ]);
+  const set = new Set();
+  (dv || []).forEach((r) => r.cuenta && set.add(r.cuenta));
+  (dp || []).forEach((r) => r.cuenta && set.add(r.cuenta));
+  const cuentas = [...set].sort();
+
+  if (datalistCuentas) {
+    datalistCuentas.innerHTML = cuentas.map((c) => `<option value="${c}"></option>`).join("");
+  }
+  if (selectCuenta) {
+    const actual = selectCuenta.value;
+    selectCuenta.innerHTML =
+      `<option value="">Todas las cuentas</option>` +
+      cuentas.map((c) => `<option value="${c}">${c}</option>`).join("");
+    selectCuenta.value = cuentas.includes(actual) ? actual : "";
+  }
+  return cuentas;
+}
+
 function ventaRowHTML(v, area, { conFecha = false, conAcciones = true } = {}) {
   const beneficio = calcularBeneficio(v, area);
   const devuelta = Number(v.monto_devuelto) > 0;
   return `<tr class="${devuelta ? "fila-devuelta" : ""}">
     ${conFecha ? `<td>${v.fecha}</td>` : ""}
+    <td class="solo-meli">${v.cuenta || "—"}</td>
     <td>${v.descripcion}${devuelta ? '<span class="badge badge-devuelta">Devuelta</span>' : ""}</td>
     <td>${v.cantidad}</td>
     <td>${formatCurrency(v.precio_venta)}</td>
@@ -569,12 +593,18 @@ async function initVentas(user, area) {
   const statPublicidad = document.getElementById("stat-publicidad");
   const selectorMes = document.getElementById("selector-mes");
   selectorMes.value = mesActualStr();
+  const selectorCuenta = document.getElementById("selector-cuenta");
+  const listaCuentas = document.getElementById("lista-cuentas");
+  const cuentaInput = document.getElementById("venta-cuenta");
+  const publicidadCuentaInput = document.getElementById("publicidad-cuenta");
 
   const formPublicidad = document.getElementById("form-publicidad");
   const publicidadFechaInput = document.getElementById("publicidad-fecha");
   const publicidadBody = document.getElementById("publicidad-lista");
   const totalPublicidadEl = document.getElementById("total-publicidad");
   if (publicidadFechaInput) publicidadFechaInput.value = todayKey();
+
+  if (area === "ecommerce_meli") await poblarCuentas(area, selectorCuenta, listaCuentas);
 
   const notaComision = document.getElementById("nota-comision");
   if (notaComision) notaComision.textContent = `Se descuenta automáticamente la comisión de MercadoLibre (${(COMISION_MELI * 100).toFixed(0)}% del precio de venta).`;
@@ -626,17 +656,18 @@ async function initVentas(user, area) {
     });
   }
 
+  function cuentaSeleccionada() {
+    return selectorCuenta?.value || "";
+  }
+
   async function renderHoy() {
-    const { data: hoy } = await sb
-      .from("ventas")
-      .select("*")
-      .eq("area", area)
-      .eq("fecha", todayKey())
-      .order("creado_en", { ascending: true });
+    let query = sb.from("ventas").select("*").eq("area", area).eq("fecha", todayKey());
+    if (cuentaSeleccionada()) query = query.eq("cuenta", cuentaSeleccionada());
+    const { data: hoy } = await query.order("creado_en", { ascending: true });
 
     ventasHoyBody.innerHTML = hoy?.length
       ? hoy.map((v) => ventaRowHTML(v, area, { conFecha: true })).join("")
-      : `<tr><td class="table-empty" colspan="11">Todavía no hay ventas registradas hoy.</td></tr>`;
+      : `<tr><td class="table-empty" colspan="12">Todavía no hay ventas registradas hoy.</td></tr>`;
     wireRow(ventasHoyBody, renderHoy);
   }
 
@@ -644,13 +675,14 @@ async function initVentas(user, area) {
     const inicioMes = primerDiaDeMes(mesStr);
     const inicioMesSiguiente = primerDiaMesSiguiente(mesStr);
 
-    const { data } = await sb
+    let query = sb
       .from("publicidad")
       .select("*")
       .eq("area", area)
       .gte("fecha", inicioMes)
-      .lt("fecha", inicioMesSiguiente)
-      .order("fecha", { ascending: false });
+      .lt("fecha", inicioMesSiguiente);
+    if (cuentaSeleccionada()) query = query.eq("cuenta", cuentaSeleccionada());
+    const { data } = await query.order("fecha", { ascending: false });
 
     const lista = data || [];
     const total = lista.reduce((sum, g) => sum + Number(g.monto), 0);
@@ -660,10 +692,10 @@ async function initVentas(user, area) {
         ? lista
             .map(
               (g) =>
-                `<tr><td>${g.fecha}</td><td>${g.descripcion}</td><td>${formatCurrency(g.monto)}</td><td><button class="btn btn-danger" data-id="${g.id}">Eliminar</button></td></tr>`
+                `<tr><td>${g.fecha}</td><td>${g.cuenta || "—"}</td><td>${g.descripcion}</td><td>${formatCurrency(g.monto)}</td><td><button class="btn btn-danger" data-id="${g.id}">Eliminar</button></td></tr>`
             )
             .join("")
-        : `<tr><td class="table-empty" colspan="4">Sin gastos de publicidad este mes.</td></tr>`;
+        : `<tr><td class="table-empty" colspan="5">Sin gastos de publicidad este mes.</td></tr>`;
 
       publicidadBody.querySelectorAll(".btn-danger[data-id]").forEach((btn) => {
         btn.addEventListener("click", async () => {
@@ -686,17 +718,18 @@ async function initVentas(user, area) {
     const inicioMes = primerDiaDeMes(mesStr);
     const inicioMesSiguiente = primerDiaMesSiguiente(mesStr);
 
-    const { data: delMes } = await sb
+    let queryMes = sb
       .from("ventas")
       .select("*")
       .eq("area", area)
       .gte("fecha", inicioMes)
-      .lt("fecha", inicioMesSiguiente)
-      .order("fecha", { ascending: false });
+      .lt("fecha", inicioMesSiguiente);
+    if (cuentaSeleccionada()) queryMes = queryMes.eq("cuenta", cuentaSeleccionada());
+    const { data: delMes } = await queryMes.order("fecha", { ascending: false });
 
     ventasMesBody.innerHTML = delMes?.length
       ? delMes.map((v) => ventaRowHTML(v, area, { conFecha: true })).join("")
-      : `<tr><td class="table-empty" colspan="11">Todavía no hay ventas ese mes.</td></tr>`;
+      : `<tr><td class="table-empty" colspan="12">Todavía no hay ventas ese mes.</td></tr>`;
     wireRow(ventasMesBody, () => renderMes(selectorMes.value));
 
     const lista = delMes || [];
@@ -712,19 +745,24 @@ async function initVentas(user, area) {
     const descripcion = document.getElementById("publicidad-descripcion").value.trim();
     const fecha = publicidadFechaInput.value || todayKey();
     const monto = Number(document.getElementById("publicidad-monto").value) || 0;
+    const cuenta = publicidadCuentaInput?.value.trim() || "";
     if (!descripcion || !monto) return;
 
-    const { error } = await sb.from("publicidad").insert({ area, descripcion, monto, fecha, creado_por: user.id });
+    const { error } = await sb
+      .from("publicidad")
+      .insert({ area, descripcion, monto, cuenta, fecha, creado_por: user.id });
     if (error) {
       alert("No se pudo registrar el gasto: " + error.message);
       return;
     }
     formPublicidad.reset();
     publicidadFechaInput.value = todayKey();
+    await poblarCuentas(area, selectorCuenta, listaCuentas);
     await renderMes(selectorMes.value);
   });
 
   selectorMes.addEventListener("change", () => renderMes(selectorMes.value));
+  selectorCuenta?.addEventListener("change", () => Promise.all([renderHoy(), renderMes(selectorMes.value)]));
 
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -735,15 +773,26 @@ async function initVentas(user, area) {
     const costo = Number(document.getElementById("venta-costo").value) || 0;
     const envio = area === "ecommerce_meli" ? Number(document.getElementById("venta-envio").value) || 0 : 0;
     const monto_devuelto = Number(document.getElementById("venta-devolucion").value) || 0;
+    const cuenta = cuentaInput?.value.trim() || "";
     if (!descripcion || !precio_venta) return;
 
-    const { error } = await sb
-      .from("ventas")
-      .insert({ area, descripcion, cantidad, precio_venta, costo, envio, monto_devuelto, fecha, creado_por: user.id });
+    const { error } = await sb.from("ventas").insert({
+      area,
+      descripcion,
+      cantidad,
+      precio_venta,
+      costo,
+      envio,
+      monto_devuelto,
+      cuenta,
+      fecha,
+      creado_por: user.id,
+    });
     if (error) {
       alert("No se pudo registrar la venta: " + error.message);
       return;
     }
+    if (area === "ecommerce_meli") await poblarCuentas(area, selectorCuenta, listaCuentas);
 
     const producto = productosPorNombre.get(descripcion);
     if (producto) {
@@ -787,29 +836,39 @@ async function initVentas(user, area) {
 async function initReporteVentas(area) {
   const selectorMes = document.getElementById("selector-mes");
   selectorMes.value = mesActualStr();
+  const selectorCuenta = document.getElementById("selector-cuenta");
   let chart = null;
+
+  if (area === "ecommerce_meli") await poblarCuentas(area, selectorCuenta, null);
 
   async function renderMes(mesStr) {
     const inicioMes = primerDiaDeMes(mesStr);
     const inicioMesSiguiente = primerDiaMesSiguiente(mesStr);
     const diasEnMes = diasEnMesStr(mesStr);
+    const cuenta = selectorCuenta?.value || "";
 
     document.getElementById("mes-nombre").textContent = nombreDeMesStr(mesStr);
 
+    let queryVentas = sb
+      .from("ventas")
+      .select("*")
+      .eq("area", area)
+      .gte("fecha", inicioMes)
+      .lt("fecha", inicioMesSiguiente);
+    let queryPublicidad = sb
+      .from("publicidad")
+      .select("monto")
+      .eq("area", area)
+      .gte("fecha", inicioMes)
+      .lt("fecha", inicioMesSiguiente);
+    if (cuenta) {
+      queryVentas = queryVentas.eq("cuenta", cuenta);
+      queryPublicidad = queryPublicidad.eq("cuenta", cuenta);
+    }
+
     const [{ data: ventas }, { data: gastosPublicidad }] = await Promise.all([
-      sb
-        .from("ventas")
-        .select("*")
-        .eq("area", area)
-        .gte("fecha", inicioMes)
-        .lt("fecha", inicioMesSiguiente)
-        .order("fecha", { ascending: false }),
-      sb
-        .from("publicidad")
-        .select("monto")
-        .eq("area", area)
-        .gte("fecha", inicioMes)
-        .lt("fecha", inicioMesSiguiente),
+      queryVentas.order("fecha", { ascending: false }),
+      queryPublicidad,
     ]);
 
     const lista = ventas || [];
@@ -826,7 +885,7 @@ async function initReporteVentas(area) {
 
     document.getElementById("historial-ventas").innerHTML = lista.length
       ? lista.map((v) => ventaRowHTML(v, area, { conFecha: true, conAcciones: false })).join("")
-      : `<tr><td class="table-empty" colspan="10">Todavía no hay ventas ese mes.</td></tr>`;
+      : `<tr><td class="table-empty" colspan="11">Todavía no hay ventas ese mes.</td></tr>`;
 
     const porDia = Array.from({ length: diasEnMes }, () => ({ facturacion: 0, beneficio: 0 }));
     lista.forEach((v) => {
@@ -856,6 +915,7 @@ async function initReporteVentas(area) {
   }
 
   selectorMes.addEventListener("change", () => renderMes(selectorMes.value));
+  selectorCuenta?.addEventListener("change", () => renderMes(selectorMes.value));
   await renderMes(selectorMes.value);
 }
 
