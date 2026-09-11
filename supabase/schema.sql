@@ -73,7 +73,19 @@ create table if not exists public.ventas (
 -- como columnas -- se calculan siempre a partir de los demás campos
 -- (ver COMISION_MELI y margenPct en script.js).
 
--- 5) Jornada (una fila por encargado y día)
+-- 5) Publicidad (gastos de publicidad de Ecommerce MercadoLibre, se
+-- descuentan del beneficio del mes en el Reporte del Mes)
+create table if not exists public.publicidad (
+  id uuid primary key default gen_random_uuid(),
+  area text not null check (area = 'ecommerce_meli'),
+  fecha date not null default current_date,
+  descripcion text not null,
+  monto numeric(10, 2) not null default 0,
+  creado_por uuid references auth.users (id),
+  creado_en timestamptz not null default now()
+);
+
+-- 6) Jornada (una fila por encargado y día)
 create table if not exists public.jornada (
   id uuid primary key default gen_random_uuid(),
   encargado_id uuid not null references auth.users (id),
@@ -89,6 +101,7 @@ alter table public.profiles enable row level security;
 alter table public.productos enable row level security;
 alter table public.ordenes enable row level security;
 alter table public.ventas enable row level security;
+alter table public.publicidad enable row level security;
 alter table public.jornada enable row level security;
 
 -- Perfiles: todos los encargados pueden verse entre sí, pero cada uno solo edita el suyo
@@ -127,6 +140,14 @@ create policy "ventas: cualquier encargado puede editar" on public.ventas
 create policy "ventas: cualquier encargado puede eliminar" on public.ventas
   for delete to authenticated using (true);
 
+-- Publicidad: lectura para todos, cualquier encargado agrega/elimina
+create policy "publicidad: lectura para todos los autenticados" on public.publicidad
+  for select to authenticated using (true);
+create policy "publicidad: cualquier encargado puede agregar" on public.publicidad
+  for insert to authenticated with check (auth.uid() = creado_por);
+create policy "publicidad: cualquier encargado puede eliminar" on public.publicidad
+  for delete to authenticated using (true);
+
 -- Jornada: todos pueden ver el historial (para el reporte del mes),
 -- pero cada encargado solo puede marcar/editar su propia jornada
 create policy "jornada: lectura para todos los autenticados" on public.jornada
@@ -138,4 +159,4 @@ create policy "jornada: cada encargado edita su propia jornada" on public.jornad
 
 -- ---------- Tiempo real: para que los cambios se vean en todos los dispositivos ----------
 
-alter publication supabase_realtime add table public.productos, public.ordenes, public.ventas, public.jornada, public.profiles;
+alter publication supabase_realtime add table public.productos, public.ordenes, public.ventas, public.publicidad, public.jornada, public.profiles;

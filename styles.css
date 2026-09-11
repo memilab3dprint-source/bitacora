@@ -252,6 +252,10 @@ body[data-current-area="ecommerce_meli"] p.solo-meli {
   display: block;
 }
 
+body[data-current-area="ecommerce_meli"] div.solo-meli {
+  display: block;
+}
+
 .field-note {
   margin: 4px 0 0;
   font-size: 0.78rem;

@@ -566,8 +566,15 @@ async function initVentas(user, area) {
   const statFacturacion = document.getElementById("stat-facturacion");
   const statBeneficio = document.getElementById("stat-beneficio");
   const statMargen = document.getElementById("stat-margen");
+  const statPublicidad = document.getElementById("stat-publicidad");
   const selectorMes = document.getElementById("selector-mes");
   selectorMes.value = mesActualStr();
+
+  const formPublicidad = document.getElementById("form-publicidad");
+  const publicidadFechaInput = document.getElementById("publicidad-fecha");
+  const publicidadBody = document.getElementById("publicidad-lista");
+  const totalPublicidadEl = document.getElementById("total-publicidad");
+  if (publicidadFechaInput) publicidadFechaInput.value = todayKey();
 
   const notaComision = document.getElementById("nota-comision");
   if (notaComision) notaComision.textContent = `Se descuenta automáticamente la comisión de MercadoLibre (${(COMISION_MELI * 100).toFixed(0)}% del precio de venta).`;
@@ -633,7 +640,49 @@ async function initVentas(user, area) {
     wireRow(ventasHoyBody, renderHoy);
   }
 
+  async function renderPublicidad(mesStr) {
+    const inicioMes = primerDiaDeMes(mesStr);
+    const inicioMesSiguiente = primerDiaMesSiguiente(mesStr);
+
+    const { data } = await sb
+      .from("publicidad")
+      .select("*")
+      .eq("area", area)
+      .gte("fecha", inicioMes)
+      .lt("fecha", inicioMesSiguiente)
+      .order("fecha", { ascending: false });
+
+    const lista = data || [];
+    const total = lista.reduce((sum, g) => sum + Number(g.monto), 0);
+
+    if (publicidadBody) {
+      publicidadBody.innerHTML = lista.length
+        ? lista
+            .map(
+              (g) =>
+                `<tr><td>${g.fecha}</td><td>${g.descripcion}</td><td>${formatCurrency(g.monto)}</td><td><button class="btn btn-danger" data-id="${g.id}">Eliminar</button></td></tr>`
+            )
+            .join("")
+        : `<tr><td class="table-empty" colspan="4">Sin gastos de publicidad este mes.</td></tr>`;
+
+      publicidadBody.querySelectorAll(".btn-danger[data-id]").forEach((btn) => {
+        btn.addEventListener("click", async () => {
+          const { error } = await sb.from("publicidad").delete().eq("id", btn.dataset.id);
+          if (error) alert("No se pudo eliminar: " + error.message);
+          await renderMes(selectorMes.value);
+        });
+      });
+    }
+
+    if (totalPublicidadEl) totalPublicidadEl.textContent = formatCurrency(total);
+    if (statPublicidad) statPublicidad.textContent = formatCurrency(total);
+
+    return total;
+  }
+
   async function renderMes(mesStr) {
+    const totalPublicidad = await renderPublicidad(mesStr);
+
     const inicioMes = primerDiaDeMes(mesStr);
     const inicioMesSiguiente = primerDiaMesSiguiente(mesStr);
 
@@ -652,11 +701,28 @@ async function initVentas(user, area) {
 
     const lista = delMes || [];
     const facturacion = lista.reduce((sum, v) => sum + facturacionNeta(v), 0);
-    const beneficio = lista.reduce((sum, v) => sum + calcularBeneficio(v, area), 0);
+    const beneficio = lista.reduce((sum, v) => sum + calcularBeneficio(v, area), 0) - totalPublicidad;
     statFacturacion.textContent = formatCurrency(facturacion);
     statBeneficio.textContent = formatCurrency(beneficio);
     statMargen.textContent = facturacion ? `${((beneficio / facturacion) * 100).toFixed(0)}%` : "--";
   }
+
+  formPublicidad?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const descripcion = document.getElementById("publicidad-descripcion").value.trim();
+    const fecha = publicidadFechaInput.value || todayKey();
+    const monto = Number(document.getElementById("publicidad-monto").value) || 0;
+    if (!descripcion || !monto) return;
+
+    const { error } = await sb.from("publicidad").insert({ area, descripcion, monto, fecha, creado_por: user.id });
+    if (error) {
+      alert("No se pudo registrar el gasto: " + error.message);
+      return;
+    }
+    formPublicidad.reset();
+    publicidadFechaInput.value = todayKey();
+    await renderMes(selectorMes.value);
+  });
 
   selectorMes.addEventListener("change", () => renderMes(selectorMes.value));
 
@@ -704,6 +770,16 @@ async function initVentas(user, area) {
       () => Promise.all([renderHoy(), renderMes(selectorMes.value)])
     )
     .subscribe();
+
+  if (area === "ecommerce_meli") {
+    sb.channel(`publicidad-${area}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "publicidad", filter: `area=eq.${area}` },
+        () => renderMes(selectorMes.value)
+      )
+      .subscribe();
+  }
 }
 
 // ---------- Reporte de Ventas (Reporte del Mes de Ecommerce MercadoLibre / Dropshipping) ----------
@@ -720,22 +796,33 @@ async function initReporteVentas(area) {
 
     document.getElementById("mes-nombre").textContent = nombreDeMesStr(mesStr);
 
-    const { data: ventas } = await sb
-      .from("ventas")
-      .select("*")
-      .eq("area", area)
-      .gte("fecha", inicioMes)
-      .lt("fecha", inicioMesSiguiente)
-      .order("fecha", { ascending: false });
+    const [{ data: ventas }, { data: gastosPublicidad }] = await Promise.all([
+      sb
+        .from("ventas")
+        .select("*")
+        .eq("area", area)
+        .gte("fecha", inicioMes)
+        .lt("fecha", inicioMesSiguiente)
+        .order("fecha", { ascending: false }),
+      sb
+        .from("publicidad")
+        .select("monto")
+        .eq("area", area)
+        .gte("fecha", inicioMes)
+        .lt("fecha", inicioMesSiguiente),
+    ]);
 
     const lista = ventas || [];
+    const totalPublicidad = (gastosPublicidad || []).reduce((sum, g) => sum + Number(g.monto), 0);
     const facturacion = lista.reduce((sum, v) => sum + facturacionNeta(v), 0);
-    const beneficio = lista.reduce((sum, v) => sum + calcularBeneficio(v, area), 0);
+    const beneficio = lista.reduce((sum, v) => sum + calcularBeneficio(v, area), 0) - totalPublicidad;
 
     document.getElementById("stat-facturacion").textContent = formatCurrency(facturacion);
     document.getElementById("stat-beneficio").textContent = formatCurrency(beneficio);
     document.getElementById("stat-ventas").textContent = lista.length;
     document.getElementById("stat-margen").textContent = facturacion ? `${((beneficio / facturacion) * 100).toFixed(0)}%` : "--";
+    const statPublicidadEl = document.getElementById("stat-publicidad");
+    if (statPublicidadEl) statPublicidadEl.textContent = formatCurrency(totalPublicidad);
 
     document.getElementById("historial-ventas").innerHTML = lista.length
       ? lista.map((v) => ventaRowHTML(v, area, { conFecha: true, conAcciones: false })).join("")

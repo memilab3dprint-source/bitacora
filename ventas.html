@@ -93,15 +93,54 @@
       </div>
     </div>
 
+    <div class="panel solo-meli" style="margin-top:20px;">
+      <h2>Gastos de publicidad</h2>
+      <form id="form-publicidad" onsubmit="return false">
+        <div class="form-grid">
+          <div class="field full">
+            <label for="publicidad-descripcion">Campaña / concepto</label>
+            <input id="publicidad-descripcion" type="text" required placeholder="Ej. Product Ads MercadoLibre" />
+          </div>
+          <div class="field">
+            <label for="publicidad-fecha">Fecha</label>
+            <input id="publicidad-fecha" type="date" required />
+          </div>
+          <div class="field">
+            <label for="publicidad-monto">Monto (CLP)</label>
+            <input id="publicidad-monto" type="number" min="0" step="1" required placeholder="0" />
+          </div>
+        </div>
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary">Registrar gasto</button>
+          <span class="form-hint">Se descuenta del beneficio del mes que elijas abajo.</span>
+        </div>
+      </form>
+      <div class="table-wrap" style="margin-top:16px;">
+        <table>
+          <thead>
+            <tr><th>Fecha</th><th>Campaña</th><th>Monto</th><th></th></tr>
+          </thead>
+          <tbody id="publicidad-lista"></tbody>
+        </table>
+      </div>
+      <div class="table-totals">
+        <div><span class="form-hint">Publicidad del mes</span><strong id="total-publicidad">$0</strong></div>
+      </div>
+    </div>
+
     <div class="field" style="max-width:220px; margin: 24px 0 16px;">
       <label for="selector-mes">Mes a consultar</label>
       <input type="month" id="selector-mes" />
     </div>
 
-    <div class="stat-grid" style="grid-template-columns: repeat(3, 1fr);">
+    <div class="stat-grid" style="grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));">
       <div class="stat-card">
         <div class="stat-value" id="stat-facturacion">--</div>
         <div class="stat-label">Facturación del mes</div>
+      </div>
+      <div class="stat-card solo-meli">
+        <div class="stat-value" id="stat-publicidad">--</div>
+        <div class="stat-label">Publicidad del mes</div>
       </div>
       <div class="stat-card">
         <div class="stat-value" id="stat-beneficio">--</div>

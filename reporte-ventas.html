@@ -41,10 +41,14 @@
       <input type="month" id="selector-mes" />
     </div>
 
-    <div class="stat-grid" style="grid-template-columns: repeat(4, 1fr);">
+    <div class="stat-grid" style="grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));">
       <div class="stat-card">
         <div class="stat-value" id="stat-facturacion">--</div>
         <div class="stat-label">Facturación del mes</div>
+      </div>
+      <div class="stat-card solo-meli">
+        <div class="stat-value" id="stat-publicidad">--</div>
+        <div class="stat-label">Publicidad del mes</div>
       </div>
       <div class="stat-card">
         <div class="stat-value" id="stat-beneficio">--</div>
