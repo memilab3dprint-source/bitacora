@@ -549,8 +549,9 @@ async function poblarCuentas(area, selectCuenta, datalistCuentas) {
   }
   if (selectCuenta) {
     const actual = selectCuenta.value;
+    const etiquetaTodas = area === "ecommerce_meli" ? "Todas las cuentas" : "Todos los proveedores";
     selectCuenta.innerHTML =
-      `<option value="">Todas las cuentas</option>` +
+      `<option value="">${etiquetaTodas}</option>` +
       cuentas.map((c) => `<option value="${c}">${c}</option>`).join("");
     selectCuenta.value = cuentas.includes(actual) ? actual : "";
   }
@@ -560,9 +561,9 @@ async function poblarCuentas(area, selectCuenta, datalistCuentas) {
 function ventaRowHTML(v, area, { conFecha = false, conAcciones = true } = {}) {
   const beneficio = calcularBeneficio(v, area);
   const devuelta = Number(v.monto_devuelto) > 0;
-  return `<tr class="${devuelta ? "fila-devuelta" : ""}">
+  return `<tr class="${devuelta ? "fila-devuelta" : ""}" data-id="${v.id}">
     ${conFecha ? `<td>${v.fecha}</td>` : ""}
-    <td class="solo-meli">${v.cuenta || "—"}</td>
+    <td>${v.cuenta || "—"}</td>
     <td>${v.descripcion}${devuelta ? '<span class="badge badge-devuelta">Devuelta</span>' : ""}</td>
     <td>${v.cantidad}</td>
     <td>${formatCurrency(v.precio_venta)}</td>
@@ -575,11 +576,32 @@ function ventaRowHTML(v, area, { conFecha = false, conAcciones = true } = {}) {
     ${
       conAcciones
         ? `<td><div class="row-actions">
+            <button class="btn btn-secondary btn-editar-venta" data-id="${v.id}">Editar</button>
             <button class="btn btn-secondary btn-editar-devolucion" data-id="${v.id}" data-precio="${v.precio_venta}" data-monto="${v.monto_devuelto || 0}">${devuelta ? "Editar devolución" : "Registrar devolución"}</button>
             <button class="btn btn-danger" data-id="${v.id}">Eliminar</button>
           </div></td>`
         : ""
     }
+  </tr>`;
+}
+
+function ventaEdicionHTML(v, area) {
+  return `<tr data-id="${v.id}">
+    <td><input type="date" class="edit-fecha" value="${v.fecha}" /></td>
+    <td><input type="text" class="edit-cuenta" value="${v.cuenta || ""}" list="lista-cuentas" /></td>
+    <td><input type="text" class="edit-descripcion" value="${v.descripcion}" /></td>
+    <td><input type="number" class="edit-cantidad" value="${v.cantidad}" min="1" step="1" /></td>
+    <td><input type="number" class="edit-precio" value="${v.precio_venta}" min="0" step="1" /></td>
+    <td><input type="number" class="edit-costo" value="${v.costo}" min="0" step="1" /></td>
+    <td class="solo-meli"><input type="number" class="edit-envio" value="${v.envio}" min="0" step="1" /></td>
+    <td class="solo-meli">--</td>
+    <td><input type="number" class="edit-devolucion" value="${v.monto_devuelto}" min="0" step="1" /></td>
+    <td>--</td>
+    <td>--</td>
+    <td><div class="row-actions">
+      <button class="btn btn-primary btn-guardar-venta" data-id="${v.id}">Guardar</button>
+      <button class="btn btn-secondary btn-cancelar-venta" data-id="${v.id}">Cancelar</button>
+    </div></td>
   </tr>`;
 }
 
@@ -604,7 +626,15 @@ async function initVentas(user, area) {
   const totalPublicidadEl = document.getElementById("total-publicidad");
   if (publicidadFechaInput) publicidadFechaInput.value = todayKey();
 
-  if (area === "ecommerce_meli") await poblarCuentas(area, selectorCuenta, listaCuentas);
+  const etiquetaCuenta = area === "ecommerce_meli" ? "Cuenta de MercadoLibre" : "Proveedor";
+  const placeholderCuenta = area === "ecommerce_meli" ? "Ej. Cuenta principal" : "Ej. Proveedor XYZ";
+  document.getElementById("label-venta-cuenta")?.replaceChildren(etiquetaCuenta);
+  const etiquetaSelectorCuenta = area === "ecommerce_meli" ? "Cuenta" : "Proveedor";
+  document.getElementById("label-selector-cuenta")?.replaceChildren(etiquetaSelectorCuenta);
+  document.querySelectorAll(".th-cuenta").forEach((th) => (th.textContent = etiquetaSelectorCuenta));
+  if (cuentaInput) cuentaInput.placeholder = placeholderCuenta;
+
+  await poblarCuentas(area, selectorCuenta, listaCuentas);
 
   const notaComision = document.getElementById("nota-comision");
   if (notaComision) notaComision.textContent = `Se descuenta automáticamente la comisión de MercadoLibre (${(COMISION_MELI * 100).toFixed(0)}% del precio de venta).`;
@@ -652,6 +682,40 @@ async function initVentas(user, area) {
         const { error } = await sb.from("ventas").update({ monto_devuelto }).eq("id", btn.dataset.id);
         if (error) alert("No se pudo actualizar: " + error.message);
         await onDone();
+      });
+    });
+    container.querySelectorAll(".btn-editar-venta[data-id]").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        const { data: venta } = await sb.from("ventas").select("*").eq("id", btn.dataset.id).maybeSingle();
+        if (!venta) return;
+        const fila = container.querySelector(`tr[data-id="${venta.id}"]`);
+        fila.outerHTML = ventaEdicionHTML(venta, area);
+        const filaEdicion = container.querySelector(`tr[data-id="${venta.id}"]`);
+
+        filaEdicion.querySelector(".btn-cancelar-venta").addEventListener("click", onDone);
+        filaEdicion.querySelector(".btn-guardar-venta").addEventListener("click", async () => {
+          const fecha = filaEdicion.querySelector(".edit-fecha").value || todayKey();
+          const cuenta = filaEdicion.querySelector(".edit-cuenta").value.trim();
+          const descripcion = filaEdicion.querySelector(".edit-descripcion").value.trim();
+          const cantidad = Number(filaEdicion.querySelector(".edit-cantidad").value) || 1;
+          const precio_venta = Number(filaEdicion.querySelector(".edit-precio").value) || 0;
+          const costo = Number(filaEdicion.querySelector(".edit-costo").value) || 0;
+          const envioInput = filaEdicion.querySelector(".edit-envio");
+          const envio = area === "ecommerce_meli" ? Number(envioInput?.value) || 0 : 0;
+          const monto_devuelto = Number(filaEdicion.querySelector(".edit-devolucion").value) || 0;
+          if (!descripcion || !precio_venta) return;
+
+          const { error } = await sb
+            .from("ventas")
+            .update({ fecha, cuenta, descripcion, cantidad, precio_venta, costo, envio, monto_devuelto })
+            .eq("id", venta.id);
+          if (error) {
+            alert("No se pudo guardar: " + error.message);
+            return;
+          }
+          await poblarCuentas(area, selectorCuenta, listaCuentas);
+          await onDone();
+        });
       });
     });
   }
@@ -839,7 +903,11 @@ async function initReporteVentas(area) {
   const selectorCuenta = document.getElementById("selector-cuenta");
   let chart = null;
 
-  if (area === "ecommerce_meli") await poblarCuentas(area, selectorCuenta, null);
+  const etiquetaSelectorCuenta = area === "ecommerce_meli" ? "Cuenta" : "Proveedor";
+  document.getElementById("label-selector-cuenta")?.replaceChildren(etiquetaSelectorCuenta);
+  document.querySelectorAll(".th-cuenta").forEach((th) => (th.textContent = etiquetaSelectorCuenta));
+
+  await poblarCuentas(area, selectorCuenta, null);
 
   async function renderMes(mesStr) {
     const inicioMes = primerDiaDeMes(mesStr);

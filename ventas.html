@@ -67,8 +67,8 @@
             <label for="venta-envio">Envío (CLP)</label>
             <input id="venta-envio" type="number" min="0" step="1" placeholder="0" />
           </div>
-          <div class="field solo-meli">
-            <label for="venta-cuenta">Cuenta de MercadoLibre</label>
+          <div class="field">
+            <label for="venta-cuenta" id="label-venta-cuenta">Cuenta de MercadoLibre</label>
             <input id="venta-cuenta" type="text" placeholder="Ej. Cuenta principal" list="lista-cuentas" autocomplete="off" />
             <datalist id="lista-cuentas"></datalist>
           </div>
@@ -91,7 +91,7 @@
       <div class="table-wrap">
         <table>
           <thead>
-            <tr><th>Fecha</th><th class="solo-meli">Cuenta</th><th>Producto</th><th>Cantidad</th><th>Precio</th><th>Costo</th><th class="solo-meli">Envío</th><th class="solo-meli">Comisión</th><th>Devolución</th><th>Margen</th><th>Beneficio</th><th></th></tr>
+            <tr><th>Fecha</th><th class="th-cuenta">Cuenta</th><th>Producto</th><th>Cantidad</th><th>Precio</th><th>Costo</th><th class="solo-meli">Envío</th><th class="solo-meli">Comisión</th><th>Devolución</th><th>Margen</th><th>Beneficio</th><th></th></tr>
           </thead>
           <tbody id="ventas-hoy"></tbody>
         </table>
@@ -142,8 +142,8 @@
         <label for="selector-mes">Mes a consultar</label>
         <input type="month" id="selector-mes" />
       </div>
-      <div class="field solo-meli" style="max-width:220px;">
-        <label for="selector-cuenta">Cuenta</label>
+      <div class="field" style="max-width:220px;">
+        <label for="selector-cuenta" id="label-selector-cuenta">Cuenta</label>
         <select id="selector-cuenta">
           <option value="">Todas las cuentas</option>
         </select>
@@ -174,7 +174,7 @@
       <div class="table-wrap">
         <table>
           <thead>
-            <tr><th>Fecha</th><th class="solo-meli">Cuenta</th><th>Producto</th><th>Cantidad</th><th>Precio</th><th>Costo</th><th class="solo-meli">Envío</th><th class="solo-meli">Comisión</th><th>Devolución</th><th>Margen</th><th>Beneficio</th><th></th></tr>
+            <tr><th>Fecha</th><th class="th-cuenta">Cuenta</th><th>Producto</th><th>Cantidad</th><th>Precio</th><th>Costo</th><th class="solo-meli">Envío</th><th class="solo-meli">Comisión</th><th>Devolución</th><th>Margen</th><th>Beneficio</th><th></th></tr>
           </thead>
           <tbody id="ventas-mes"></tbody>
         </table>
