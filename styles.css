@@ -465,6 +465,26 @@ tr.fila-devuelta {
   background: #fef2f2;
 }
 
+.badge-stock-bajo {
+  background: #fef3c7;
+  color: #92400e;
+  margin-left: 6px;
+}
+
+tr.fila-stock-bajo {
+  background: #fffbeb;
+}
+
+.alerta-stock-bajo {
+  margin: -8px 0 20px;
+  padding: 12px 16px;
+  border-radius: 10px;
+  background: #fef3c7;
+  color: #92400e;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
 .row-actions {
   display: flex;
   gap: 6px;
@@ -611,5 +631,30 @@ table input[type="number"] {
   }
   .stat-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+@media print {
+  .topbar,
+  .back-link,
+  .page-footer,
+  .btn-logout,
+  .no-imprimir {
+    display: none !important;
+  }
+  main {
+    max-width: none;
+    padding: 0;
+  }
+  body {
+    background: #fff;
+  }
+  .panel,
+  .stat-card {
+    box-shadow: none;
+    border: 1px solid #ddd;
+  }
+  .table-wrap {
+    overflow-x: visible;
   }
 }

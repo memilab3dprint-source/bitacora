@@ -36,6 +36,11 @@
     <p class="area-tag" id="area-tag"></p>
     <p class="page-subtitle" id="mes-nombre">Genera el resumen de actividad y producción del mes.</p>
 
+    <div class="form-actions no-imprimir" style="margin-bottom:20px;">
+      <button type="button" class="btn btn-secondary" id="btn-exportar-excel">Exportar a Excel</button>
+      <button type="button" class="btn btn-secondary" id="btn-imprimir">Imprimir / PDF</button>
+    </div>
+
     <div class="stat-grid">
       <div class="stat-card">
         <div class="stat-value" id="stat-productos">--</div>
@@ -60,6 +65,7 @@
     <p>Dashboard — panel interno del taller</p>
   </footer>
 
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
   <script src="config.js"></script>
   <script src="script.js"></script>

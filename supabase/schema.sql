@@ -38,6 +38,7 @@ create table if not exists public.productos (
   categoria text,
   cantidad integer not null default 0,
   precio numeric(10, 2) not null default 0,
+  stock_minimo integer not null default 5,
   area text not null check (area in ('impresion_3d', 'ecommerce_meli', 'dropshipping')),
   creado_por uuid references auth.users (id),
   creado_en timestamptz not null default now()

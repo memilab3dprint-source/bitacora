@@ -36,7 +36,7 @@
     <p class="area-tag" id="area-tag"></p>
     <p class="page-subtitle" id="mes-nombre">Gráficas de facturación, beneficios e historial de ventas.</p>
 
-    <div style="display:flex; gap:14px; flex-wrap:wrap; margin-bottom:20px;">
+    <div class="no-imprimir" style="display:flex; gap:14px; flex-wrap:wrap; margin-bottom:20px;">
       <div class="field" style="max-width:220px;">
         <label for="selector-mes">Mes a consultar</label>
         <input type="month" id="selector-mes" />
@@ -47,6 +47,11 @@
           <option value="">Todas las cuentas</option>
         </select>
       </div>
+    </div>
+
+    <div class="form-actions no-imprimir" style="margin-bottom:20px;">
+      <button type="button" class="btn btn-secondary" id="btn-exportar-excel">Exportar a Excel</button>
+      <button type="button" class="btn btn-secondary" id="btn-imprimir">Imprimir / PDF</button>
     </div>
 
     <div class="stat-grid" style="grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));">
@@ -97,6 +102,7 @@
   </footer>
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
   <script src="config.js"></script>
   <script src="script.js"></script>

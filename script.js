@@ -303,9 +303,12 @@ async function initAgregarProducto(user, area) {
     const categoria = document.getElementById("producto-categoria").value.trim();
     const cantidad = Number(document.getElementById("producto-cantidad").value);
     const precio = Number(document.getElementById("producto-precio").value) || 0;
+    const stock_minimo = Number(document.getElementById("producto-stock-minimo").value) || 0;
     if (!nombre || !cantidad) return;
 
-    const { error } = await sb.from("productos").insert({ nombre, categoria, cantidad, precio, area, creado_por: user.id });
+    const { error } = await sb
+      .from("productos")
+      .insert({ nombre, categoria, cantidad, precio, stock_minimo, area, creado_por: user.id });
     if (error) {
       alert("No se pudo guardar el producto: " + error.message);
       return;
@@ -331,12 +334,19 @@ async function initInventario(area) {
   if (linkAgregar) linkAgregar.href = `agregar-producto.html?area=${area}`;
 
   let productosCache = [];
+  const alertaStockBajo = document.getElementById("alerta-stock-bajo");
+
+  function stockBajo(p) {
+    return Number(p.cantidad) <= Number(p.stock_minimo ?? 5);
+  }
 
   function filaHTML(p) {
-    return `<tr data-id="${p.id}">
-      <td>${p.nombre}</td>
+    const bajo = stockBajo(p);
+    return `<tr data-id="${p.id}" class="${bajo ? "fila-stock-bajo" : ""}">
+      <td>${p.nombre}${bajo ? '<span class="badge badge-stock-bajo">Stock bajo</span>' : ""}</td>
       <td>${p.categoria || "--"}</td>
       <td>${p.cantidad}</td>
+      <td>${p.stock_minimo ?? 5}</td>
       <td>${formatCurrency(p.precio)}</td>
       <td>${formatCurrency(p.cantidad * p.precio)}</td>
       <td><div class="row-actions">
@@ -352,6 +362,7 @@ async function initInventario(area) {
       <td><input type="text" class="edit-nombre" value="${p.nombre}" /></td>
       <td><input type="text" class="edit-categoria" value="${p.categoria || ""}" /></td>
       <td><input type="number" class="edit-cantidad" value="${p.cantidad}" min="0" step="1" /></td>
+      <td><input type="number" class="edit-stock-minimo" value="${p.stock_minimo ?? 5}" min="0" step="1" /></td>
       <td><input type="number" class="edit-precio" value="${p.precio}" min="0" step="1" /></td>
       <td>--</td>
       <td><div class="row-actions">
@@ -403,12 +414,13 @@ async function initInventario(area) {
         const nombre = fila.querySelector(".edit-nombre").value.trim();
         const categoria = fila.querySelector(".edit-categoria").value.trim();
         const cantidad = Number(fila.querySelector(".edit-cantidad").value) || 0;
+        const stock_minimo = Number(fila.querySelector(".edit-stock-minimo").value) || 0;
         const precio = Number(fila.querySelector(".edit-precio").value) || 0;
         if (!nombre) return;
 
         const { error } = await sb
           .from("productos")
-          .update({ nombre, categoria, cantidad, precio })
+          .update({ nombre, categoria, cantidad, stock_minimo, precio })
           .eq("id", btn.dataset.id);
         if (error) {
           alert("No se pudo guardar: " + error.message);
@@ -429,12 +441,23 @@ async function initInventario(area) {
 
     body.innerHTML = productosCache.length
       ? productosCache.map(filaHTML).join("")
-      : `<tr><td class="table-empty" colspan="6">No hay productos en el inventario todavía. <a href="agregar-producto.html?area=${area}">Agrega el primero</a>.</td></tr>`;
+      : `<tr><td class="table-empty" colspan="7">No hay productos en el inventario todavía. <a href="agregar-producto.html?area=${area}">Agrega el primero</a>.</td></tr>`;
 
     const totalUnidades = productosCache.reduce((sum, p) => sum + Number(p.cantidad), 0);
     const totalValor = productosCache.reduce((sum, p) => sum + Number(p.cantidad) * Number(p.precio), 0);
     totalUnidadesEl.textContent = totalUnidades;
     totalValorEl.textContent = formatCurrency(totalValor);
+
+    if (alertaStockBajo) {
+      const bajos = productosCache.filter(stockBajo);
+      if (bajos.length) {
+        const nombres = bajos.map((p) => p.nombre).join(", ");
+        alertaStockBajo.textContent = `⚠ ${bajos.length} producto${bajos.length > 1 ? "s" : ""} con stock bajo: ${nombres}`;
+        alertaStockBajo.hidden = false;
+      } else {
+        alertaStockBajo.hidden = true;
+      }
+    }
 
     wireFila();
   }
@@ -902,6 +925,8 @@ async function initReporteVentas(area) {
   selectorMes.value = mesActualStr();
   const selectorCuenta = document.getElementById("selector-cuenta");
   let chart = null;
+  let ultimaLista = [];
+  let ultimoResumen = {};
 
   const etiquetaSelectorCuenta = area === "ecommerce_meli" ? "Cuenta" : "Proveedor";
   document.getElementById("label-selector-cuenta")?.replaceChildren(etiquetaSelectorCuenta);
@@ -955,6 +980,16 @@ async function initReporteVentas(area) {
       ? lista.map((v) => ventaRowHTML(v, area, { conFecha: true, conAcciones: false })).join("")
       : `<tr><td class="table-empty" colspan="11">Todavía no hay ventas ese mes.</td></tr>`;
 
+    ultimaLista = lista;
+    ultimoResumen = {
+      mesStr,
+      facturacion,
+      beneficio,
+      totalPublicidad,
+      margen: facturacion ? (beneficio / facturacion) * 100 : 0,
+      ventas: lista.length,
+    };
+
     const porDia = Array.from({ length: diasEnMes }, () => ({ facturacion: 0, beneficio: 0 }));
     lista.forEach((v) => {
       const dia = Number(v.fecha.slice(8, 10)) - 1;
@@ -981,6 +1016,48 @@ async function initReporteVentas(area) {
       },
     });
   }
+
+  document.getElementById("btn-exportar-excel")?.addEventListener("click", () => {
+    if (typeof XLSX === "undefined") return;
+    const etiquetaCuenta = area === "ecommerce_meli" ? "Cuenta" : "Proveedor";
+
+    const resumen = [
+      ["Reporte del Mes", nombreDeMesStr(ultimoResumen.mesStr)],
+      ["Área", AREAS[area]],
+      [],
+      ["Facturación del mes", ultimoResumen.facturacion],
+    ];
+    if (area === "ecommerce_meli") resumen.push(["Publicidad del mes", ultimoResumen.totalPublicidad]);
+    resumen.push(
+      ["Beneficio del mes", ultimoResumen.beneficio],
+      ["Margen promedio (%)", Number(ultimoResumen.margen.toFixed(1))],
+      ["Ventas registradas", ultimoResumen.ventas]
+    );
+
+    const detalle = [
+      ["Fecha", etiquetaCuenta, "Producto", "Cantidad", "Precio", "Costo", "Envío", "Comisión", "Devolución", "Margen %", "Beneficio"],
+      ...ultimaLista.map((v) => [
+        v.fecha,
+        v.cuenta || "",
+        v.descripcion,
+        v.cantidad,
+        Number(v.precio_venta),
+        Number(v.costo),
+        Number(v.envio || 0),
+        Number(comisionMeli(v.precio_venta, area).toFixed(2)),
+        Number(v.monto_devuelto || 0),
+        Number(margenPct(v, area).toFixed(1)),
+        Number(calcularBeneficio(v, area).toFixed(2)),
+      ]),
+    ];
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(resumen), "Resumen");
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(detalle), "Detalle");
+    XLSX.writeFile(wb, `reporte-${area}-${ultimoResumen.mesStr}.xlsx`);
+  });
+
+  document.getElementById("btn-imprimir")?.addEventListener("click", () => window.print());
 
   selectorMes.addEventListener("change", () => renderMes(selectorMes.value));
   selectorCuenta?.addEventListener("change", () => renderMes(selectorMes.value));
@@ -1009,6 +1086,38 @@ async function initReporteDelMes(area) {
   document.getElementById("stat-productos").textContent = (productos || []).length;
   document.getElementById("stat-valor").textContent = formatCurrency(valorInventarioMes);
   document.getElementById("stat-ordenes").textContent = `${ordenesTerminadas} / ${(ordenes || []).length}`;
+
+  document.getElementById("btn-exportar-excel")?.addEventListener("click", () => {
+    if (typeof XLSX === "undefined") return;
+    const listaProductos = productos || [];
+    const listaOrdenes = ordenes || [];
+
+    const resumen = [
+      ["Reporte del Mes", document.getElementById("mes-nombre").textContent],
+      ["Área", AREAS[area]],
+      [],
+      ["Productos agregados", listaProductos.length],
+      ["Valor agregado al inventario", valorInventarioMes],
+      ["Órdenes terminadas", ordenesTerminadas],
+      ["Órdenes totales", listaOrdenes.length],
+    ];
+    const hojaProductos = [
+      ["Nombre", "Categoría", "Cantidad", "Precio"],
+      ...listaProductos.map((p) => [p.nombre, p.categoria || "", p.cantidad, Number(p.precio)]),
+    ];
+    const hojaOrdenes = [
+      ["Título", "Cliente", "Estado"],
+      ...listaOrdenes.map((o) => [o.titulo, o.cliente || "", o.estado]),
+    ];
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(resumen), "Resumen");
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(hojaProductos), "Productos");
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(hojaOrdenes), "Órdenes");
+    XLSX.writeFile(wb, `reporte-${area}.xlsx`);
+  });
+
+  document.getElementById("btn-imprimir")?.addEventListener("click", () => window.print());
 }
 
 // ---------- Usuario ----------
